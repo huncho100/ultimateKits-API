@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:18
+    container_name: ultimatekits-postgres
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: hangouts100
+      POSTGRES_DB: ultimatekits
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
