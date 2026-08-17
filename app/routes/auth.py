@@ -158,4 +158,4 @@ def get_current_user_profile(
     Return the currently authenticated user's profile.
     """
 
-    return current_user
+    return UserResponse.model_validate(current_user)
