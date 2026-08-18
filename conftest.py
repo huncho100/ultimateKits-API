@@ -7,8 +7,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.database.database import Base, get_db
 from app.main import app
 
-# Make sure all models are registered with Base.metadata
+# ==========================================
+# Register Models With SQLAlchemy Metadata
+# ==========================================
+
 from app.models.user import User  # noqa: F401
+from app.models.product import Product  # noqa: F401
 
 
 # ==========================================
