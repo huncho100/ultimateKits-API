@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_admin
 from app.database.database import get_db
+from app.models.user import User
 from app.schemas.product import (
     ProductCreate,
     ProductResponse,
@@ -28,9 +30,12 @@ router = APIRouter(
 def create_product(
     data: ProductCreate,
     db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
 ):
     """
     Create a new product.
+
+    Requires administrator privileges.
     """
 
     return ProductService.create_product(
@@ -52,6 +57,8 @@ def get_products(
 ):
     """
     Retrieve all products.
+
+    Public endpoint.
     """
 
     return ProductService.get_products(
@@ -73,6 +80,8 @@ def get_product(
 ):
     """
     Retrieve a single product by ID.
+
+    Public endpoint.
     """
 
     product = ProductService.get_product_by_id(
@@ -101,9 +110,12 @@ def update_product(
     product_id: int,
     data: ProductUpdate,
     db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
 ):
     """
     Update an existing product.
+
+    Requires administrator privileges.
     """
 
     product = ProductService.get_product_by_id(
@@ -135,9 +147,12 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
 ):
     """
     Delete an existing product.
+
+    Requires administrator privileges.
     """
 
     product = ProductService.get_product_by_id(

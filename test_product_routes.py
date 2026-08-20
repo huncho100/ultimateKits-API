@@ -1,4 +1,10 @@
+import uuid
 from decimal import Decimal
+
+from sqlalchemy.orm import Session
+
+from app.models.user import User
+from app.utils.security import create_access_token
 
 
 # ==========================================
@@ -24,13 +30,56 @@ PRODUCT_DATA = {
 
 
 # ==========================================
+# Authentication Helper
+# ==========================================
+
+def create_admin_headers(db: Session) -> dict:
+    """
+    Create an authenticated admin user and return
+    the Authorization header required by protected
+    product routes.
+    """
+
+    admin = User(
+        first_name="Product",
+        last_name="Admin",
+        email=(
+            f"product_admin_{uuid.uuid4().hex[:8]}"
+            "@example.com"
+        ),
+        password_hash="test-password-hash",
+        role="admin",
+        is_active=True,
+    )
+
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+
+    token = create_access_token(
+        {
+            "sub": str(admin.id),
+            "email": admin.email,
+            "role": admin.role,
+        }
+    )
+
+    return {
+        "Authorization": f"Bearer {token}",
+    }
+
+
+# ==========================================
 # Create Product
 # ==========================================
 
-def test_create_product(client):
+def test_create_product(client, db):
+    headers = create_admin_headers(db)
+
     response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert response.status_code == 201
@@ -59,10 +108,13 @@ def test_create_product(client):
 # Get All Products
 # ==========================================
 
-def test_get_products(client):
+def test_get_products(client, db):
+    headers = create_admin_headers(db)
+
     create_response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert create_response.status_code == 201
@@ -70,7 +122,8 @@ def test_get_products(client):
     created_product = create_response.json()
 
     response = client.get(
-        "/products"
+        "/products",
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -94,10 +147,13 @@ def test_get_products(client):
 # Get Product By ID
 # ==========================================
 
-def test_get_product_by_id(client):
+def test_get_product_by_id(client, db):
+    headers = create_admin_headers(db)
+
     create_response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert create_response.status_code == 201
@@ -105,7 +161,8 @@ def test_get_product_by_id(client):
     product_id = create_response.json()["id"]
 
     response = client.get(
-        f"/products/{product_id}"
+        f"/products/{product_id}",
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -123,9 +180,12 @@ def test_get_product_by_id(client):
 # Get Nonexistent Product
 # ==========================================
 
-def test_get_nonexistent_product(client):
+def test_get_nonexistent_product(client, db):
+    headers = create_admin_headers(db)
+
     response = client.get(
-        "/products/999999"
+        "/products/999999",
+        headers=headers,
     )
 
     assert response.status_code == 404
@@ -141,10 +201,13 @@ def test_get_nonexistent_product(client):
 # Update Product
 # ==========================================
 
-def test_update_product(client):
+def test_update_product(client, db):
+    headers = create_admin_headers(db)
+
     create_response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert create_response.status_code == 201
@@ -160,6 +223,7 @@ def test_update_product(client):
     response = client.patch(
         f"/products/{product_id}",
         json=update_data,
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -171,8 +235,7 @@ def test_update_product(client):
     assert data["rating"] == 4.8
     assert data["in_stock"] is False
 
-    # Verify that fields not included in the
-    # update remain unchanged.
+    # Fields not included in the update remain unchanged.
     assert data["name"] == PRODUCT_DATA["name"]
     assert data["team"] == PRODUCT_DATA["team"]
 
@@ -183,10 +246,13 @@ def test_update_product(client):
 # Partial Product Update
 # ==========================================
 
-def test_partial_product_update(client):
+def test_partial_product_update(client, db):
+    headers = create_admin_headers(db)
+
     create_response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert create_response.status_code == 201
@@ -199,6 +265,7 @@ def test_partial_product_update(client):
         json={
             "is_featured": False,
         },
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -208,7 +275,7 @@ def test_partial_product_update(client):
     assert data["id"] == product_id
     assert data["is_featured"] is False
 
-    # Other fields must remain unchanged.
+    # Other fields remain unchanged.
     assert data["name"] == PRODUCT_DATA["name"]
     assert Decimal(data["price"]) == Decimal("89.99")
     assert data["team"] == PRODUCT_DATA["team"]
@@ -220,12 +287,15 @@ def test_partial_product_update(client):
 # Update Nonexistent Product
 # ==========================================
 
-def test_update_nonexistent_product(client):
+def test_update_nonexistent_product(client, db):
+    headers = create_admin_headers(db)
+
     response = client.patch(
         "/products/999999",
         json={
             "price": "79.99",
         },
+        headers=headers,
     )
 
     assert response.status_code == 404
@@ -241,10 +311,13 @@ def test_update_nonexistent_product(client):
 # Delete Product
 # ==========================================
 
-def test_delete_product(client):
+def test_delete_product(client, db):
+    headers = create_admin_headers(db)
+
     create_response = client.post(
         "/products",
         json=PRODUCT_DATA,
+        headers=headers,
     )
 
     assert create_response.status_code == 201
@@ -252,15 +325,17 @@ def test_delete_product(client):
     product_id = create_response.json()["id"]
 
     response = client.delete(
-        f"/products/{product_id}"
+        f"/products/{product_id}",
+        headers=headers,
     )
 
     assert response.status_code == 204
     assert response.content == b""
 
-    # Confirm that the product is actually gone.
+    # Confirm that the product was actually deleted.
     get_response = client.get(
-        f"/products/{product_id}"
+        f"/products/{product_id}",
+        headers=headers,
     )
 
     assert get_response.status_code == 404
@@ -272,9 +347,12 @@ def test_delete_product(client):
 # Delete Nonexistent Product
 # ==========================================
 
-def test_delete_nonexistent_product(client):
+def test_delete_nonexistent_product(client, db):
+    headers = create_admin_headers(db)
+
     response = client.delete(
-        "/products/999999"
+        "/products/999999",
+        headers=headers,
     )
 
     assert response.status_code == 404

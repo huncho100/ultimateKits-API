@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import (
@@ -58,25 +59,31 @@ def create_user_token(user: User) -> str:
     )
 
 
+class Credentials:
+    """
+    Simple test replacement for
+    HTTPAuthorizationCredentials.
+    """
+
+    def __init__(self, token: str):
+        self.credentials = token
+
+
 # ==========================================
 # Get Current User
 # ==========================================
 
 def test_get_current_user_valid_token(db: Session):
     """
-    Valid JWT should return the corresponding user.
+    A valid JWT should return the corresponding user.
     """
 
     user = create_test_user(db)
 
     token = create_user_token(user)
 
-    # Mock FastAPI HTTPAuthorizationCredentials
-    class Credentials:
-        credentials = token
-
     result = get_current_user(
-        credentials=Credentials(),
+        credentials=Credentials(token),
         db=db,
     )
 
@@ -93,15 +100,12 @@ def test_get_current_user_valid_token(db: Session):
 
 def test_get_current_user_invalid_token(db: Session):
     """
-    Invalid JWT should return HTTP 401.
+    An invalid JWT should return HTTP 401.
     """
 
-    class Credentials:
-        credentials = "invalid-token"
-
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_user(
-            credentials=Credentials(),
+            credentials=Credentials("invalid-token"),
             db=db,
         )
 
@@ -117,7 +121,7 @@ def test_get_current_user_invalid_token(db: Session):
 
 def test_get_current_user_missing_subject(db: Session):
     """
-    JWT without a subject should return HTTP 401.
+    A JWT without a subject should return HTTP 401.
     """
 
     token = create_access_token(
@@ -127,12 +131,9 @@ def test_get_current_user_missing_subject(db: Session):
         }
     )
 
-    class Credentials:
-        credentials = token
-
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_user(
-            credentials=Credentials(),
+            credentials=Credentials(token),
             db=db,
         )
 
@@ -148,7 +149,7 @@ def test_get_current_user_missing_subject(db: Session):
 
 def test_get_current_user_invalid_user_id(db: Session):
     """
-    JWT with an invalid user ID should return HTTP 401.
+    A JWT with an invalid user ID should return HTTP 401.
     """
 
     token = create_access_token(
@@ -159,12 +160,9 @@ def test_get_current_user_invalid_user_id(db: Session):
         }
     )
 
-    class Credentials:
-        credentials = token
-
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_user(
-            credentials=Credentials(),
+            credentials=Credentials(token),
             db=db,
         )
 
@@ -180,7 +178,7 @@ def test_get_current_user_invalid_user_id(db: Session):
 
 def test_get_current_user_nonexistent_user(db: Session):
     """
-    JWT containing a nonexistent user ID should
+    A JWT containing a nonexistent user ID should
     return HTTP 401.
     """
 
@@ -192,12 +190,9 @@ def test_get_current_user_nonexistent_user(db: Session):
         }
     )
 
-    class Credentials:
-        credentials = token
-
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_user(
-            credentials=Credentials(),
+            credentials=Credentials(token),
             db=db,
         )
 
@@ -213,7 +208,7 @@ def test_get_current_user_nonexistent_user(db: Session):
 
 def test_get_current_user_inactive_user(db: Session):
     """
-    Inactive users should receive HTTP 403.
+    An inactive user should receive HTTP 403.
     """
 
     user = create_test_user(
@@ -223,12 +218,9 @@ def test_get_current_user_inactive_user(db: Session):
 
     token = create_user_token(user)
 
-    class Credentials:
-        credentials = token
-
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_user(
-            credentials=Credentials(),
+            credentials=Credentials(token),
             db=db,
         )
 
@@ -248,7 +240,6 @@ def test_get_current_admin():
     """
 
     admin = User(
-        id=1,
         first_name="Admin",
         last_name="User",
         email="admin@example.com",
@@ -278,7 +269,6 @@ def test_get_current_admin_customer_forbidden():
     """
 
     customer = User(
-        id=2,
         first_name="Customer",
         last_name="User",
         email="customer@example.com",
@@ -287,7 +277,7 @@ def test_get_current_admin_customer_forbidden():
         is_active=True,
     )
 
-    with pytest.raises(Exception) as error:
+    with pytest.raises(HTTPException) as error:
         get_current_admin(
             current_user=customer,
         )
