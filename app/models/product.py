@@ -9,7 +9,7 @@ from sqlalchemy import (
     String,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
 
@@ -141,4 +141,18 @@ class Product(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    # ==========================================
+    # Relationships
+    # ==========================================
+
+    cart_items = relationship(
+        "CartItem",
+        back_populates="product",
+    )
+
+    order_items = relationship(
+        "OrderItem",
+        back_populates="product",
     )

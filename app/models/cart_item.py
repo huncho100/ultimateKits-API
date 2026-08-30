@@ -1,13 +1,14 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
 
 
-class User(Base):
-    __tablename__ = "users"
+class CartItem(Base):
+    __tablename__ = "cart_items"
 
     # ==========================================
     # Primary Key
@@ -20,53 +21,43 @@ class User(Base):
     )
 
     # ==========================================
-    # Personal Information
+    # Cart Relationship
     # ==========================================
 
-    first_name: Mapped[str] = mapped_column(
-        String(100),
+    cart_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "carts.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
-    )
-
-    last_name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
-
-    # ==========================================
-    # Authentication
-    # ==========================================
-
-    email: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
         index=True,
-        nullable=False,
-    )
-
-    password_hash: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
     )
 
     # ==========================================
-    # User Status / Role
+    # Product Relationship
     # ==========================================
 
-    role: Mapped[str] = mapped_column(
-        String(50),
-        default="customer",
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "products.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
-    )
-
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
+        index=True,
     )
 
     # ==========================================
-    # Timestamps
+    # Quantity
+    # ==========================================
+
+    quantity: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+    )
+
+    # ==========================================
+    # Timestamp
     # ==========================================
 
     created_at: Mapped[datetime] = mapped_column(
@@ -88,13 +79,34 @@ class User(Base):
 
     cart = relationship(
         "Cart",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
+        back_populates="items",
     )
 
-    orders = relationship(
-        "Order",
-        back_populates="user",
-        cascade="all, delete-orphan",
+    product = relationship(
+        "Product",
+        back_populates="cart_items",
     )
+
+    # ==========================================
+    # Computed Pricing
+    # ==========================================
+
+    @property
+    def unit_price(self) -> Decimal:
+        """
+        Return the current price of the product.
+        """
+
+        return self.product.price
+
+    @property
+    def subtotal(self) -> Decimal:
+        """
+        Return the current subtotal for the
+        cart item.
+        """
+
+        return (
+            self.product.price
+            * self.quantity
+        )

@@ -7,12 +7,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.database.database import Base, get_db
 from app.main import app
 
+
 # ==========================================
 # Register Models With SQLAlchemy Metadata
 # ==========================================
 
 from app.models.user import User  # noqa: F401
 from app.models.product import Product  # noqa: F401
+from app.models.cart import Cart  # noqa: F401
+from app.models.cart_item import CartItem  # noqa: F401
+from app.models.order import Order  # noqa: F401
+from app.models.order_item import OrderItem  # noqa: F401
 
 
 # ==========================================

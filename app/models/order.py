@@ -1,13 +1,21 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
 
 
-class User(Base):
-    __tablename__ = "users"
+class Order(Base):
+    __tablename__ = "orders"
 
     # ==========================================
     # Primary Key
@@ -20,48 +28,36 @@ class User(Base):
     )
 
     # ==========================================
-    # Personal Information
+    # Customer
     # ==========================================
 
-    first_name: Mapped[str] = mapped_column(
-        String(100),
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
-    )
-
-    last_name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
-
-    # ==========================================
-    # Authentication
-    # ==========================================
-
-    email: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
         index=True,
-        nullable=False,
-    )
-
-    password_hash: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
     )
 
     # ==========================================
-    # User Status / Role
+    # Order Status
     # ==========================================
 
-    role: Mapped[str] = mapped_column(
+    status: Mapped[str] = mapped_column(
         String(50),
-        default="customer",
+        default="pending",
         nullable=False,
+        index=True,
     )
 
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
+    # ==========================================
+    # Order Total
+    # ==========================================
+
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2),
+        default=Decimal("0.00"),
         nullable=False,
     )
 
@@ -86,15 +82,14 @@ class User(Base):
     # Relationships
     # ==========================================
 
-    cart = relationship(
-        "Cart",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
+    user = relationship(
+        "User",
+        back_populates="orders",
     )
 
-    orders = relationship(
-        "Order",
-        back_populates="user",
+    items = relationship(
+        "OrderItem",
+        back_populates="order",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
