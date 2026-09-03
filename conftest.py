@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.database.database import Base, get_db
 from app.main import app
+from app.database.seed import seed_products, seed_users
 
 
 # ==========================================
@@ -54,14 +55,46 @@ TestingSessionLocal = sessionmaker(
 def setup_test_database():
     """
     Create all test database tables before the
-    test session and remove them afterward.
+    test session, seed the database, and remove
+    everything afterward.
     """
+
+    # ------------------------------------------
+    # Create Tables
+    # ------------------------------------------
 
     Base.metadata.create_all(
         bind=test_engine,
     )
 
+    # ------------------------------------------
+    # Seed Test Database
+    # ------------------------------------------
+
+    session = TestingSessionLocal()
+
+    try:
+        seed_users(session)
+        seed_products(session)
+
+        session.commit()
+
+    except Exception:
+        session.rollback()
+        raise
+
+    finally:
+        session.close()
+
+    # ------------------------------------------
+    # Run Tests
+    # ------------------------------------------
+
     yield
+
+    # ------------------------------------------
+    # Clean Up Test Database
+    # ------------------------------------------
 
     Base.metadata.drop_all(
         bind=test_engine,
