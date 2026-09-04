@@ -557,3 +557,146 @@ def test_get_order_requires_authentication(
         "✓ Order by ID authentication "
         "test passed"
     )
+
+
+# ==========================================
+# Checkout Out Of Stock Product
+# ==========================================
+
+def test_create_order_with_out_of_stock_product(
+    client,
+    db,
+):
+    """
+    Checkout should fail when a cart contains
+    an out-of-stock product.
+    """
+
+    user = create_test_user(db)
+
+    product = create_test_product(
+        db,
+        price=Decimal("50.00"),
+        in_stock=False,
+    )
+
+    cart = create_test_cart(
+        db,
+        user,
+    )
+
+    add_cart_item(
+        db,
+        cart,
+        product,
+        quantity=1,
+    )
+
+    response = client.post(
+        "/orders",
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 400
+
+    data = response.json()
+
+    assert data["detail"] == (
+        "Product is out of stock."
+    )
+
+    print(
+        "✓ Out of stock checkout route "
+        "test passed"
+    )
+
+
+# ==========================================
+# Order Price Snapshot
+# ==========================================
+
+def test_order_preserves_product_price(
+    client,
+    db,
+):
+    """
+    An order must preserve the product price
+    that existed when the order was created.
+    """
+
+    user = create_test_user(db)
+
+    product = create_test_product(
+        db,
+        price=Decimal("50.00"),
+    )
+
+    cart = create_test_cart(
+        db,
+        user,
+    )
+
+    add_cart_item(
+        db,
+        cart,
+        product,
+        quantity=2,
+    )
+
+    response = client.post(
+        "/orders",
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 201
+
+    order_data = response.json()
+
+    assert Decimal(
+        order_data["total_amount"]
+    ) == Decimal("100.00")
+
+    assert len(order_data["items"]) == 1
+
+    item = order_data["items"][0]
+
+    assert Decimal(
+        item["unit_price"]
+    ) == Decimal("50.00")
+
+    assert Decimal(
+        item["subtotal"]
+    ) == Decimal("100.00")
+
+    product.price = Decimal("75.00")
+    db.commit()
+    db.refresh(product)
+
+    order_response = client.get(
+        f"/orders/{order_data['id']}",
+        headers=auth_headers(user),
+    )
+
+    assert order_response.status_code == 200
+
+    updated_order = order_response.json()
+
+    assert Decimal(
+        updated_order["total_amount"]
+    ) == Decimal("100.00")
+
+    assert len(updated_order["items"]) == 1
+
+    updated_item = updated_order["items"][0]
+
+    assert Decimal(
+        updated_item["unit_price"]
+    ) == Decimal("50.00")
+
+    assert Decimal(
+        updated_item["subtotal"]
+    ) == Decimal("100.00")
+
+    print(
+        "✓ Order price snapshot test passed"
+    )

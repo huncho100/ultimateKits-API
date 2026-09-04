@@ -627,3 +627,96 @@ def test_clear_cart_requires_authentication(
     assert response.status_code == 401
 
     print("✓ Clear cart authentication test passed")
+
+
+# ==========================================
+# Add Cart Item With Invalid Quantity
+# ==========================================
+
+def test_add_cart_item_invalid_quantity(
+    client,
+    db,
+):
+    user = create_test_user(db)
+    product = create_test_product(db)
+
+    headers = auth_headers(user)
+
+    zero_response = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": 0,
+        },
+        headers=headers,
+    )
+
+    assert zero_response.status_code == 422
+
+    negative_response = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": -1,
+        },
+        headers=headers,
+    )
+
+    assert negative_response.status_code == 422
+
+    print(
+        "✓ Invalid cart item quantity "
+        "validation test passed"
+    )
+
+
+# ==========================================
+# Update Cart Item With Invalid Quantity
+# ==========================================
+
+def test_update_cart_item_invalid_quantity(
+    client,
+    db,
+):
+    user = create_test_user(db)
+    product = create_test_product(db)
+
+    headers = auth_headers(user)
+
+    create_response = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": 2,
+        },
+        headers=headers,
+    )
+
+    assert create_response.status_code == 201
+
+    item_id = create_response.json()["id"]
+
+    zero_response = client.patch(
+        f"/cart/items/{item_id}",
+        json={
+            "quantity": 0,
+        },
+        headers=headers,
+    )
+
+    assert zero_response.status_code == 422
+
+    negative_response = client.patch(
+        f"/cart/items/{item_id}",
+        json={
+            "quantity": -5,
+        },
+        headers=headers,
+    )
+
+    assert negative_response.status_code == 422
+
+    print(
+        "✓ Invalid cart update quantity "
+        "validation test passed"
+    )
