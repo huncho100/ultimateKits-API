@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     and the .env file.
     """
 
-    # ===========az===============================
+    # ==========================================
     # Application
     # ==========================================
 
@@ -40,6 +40,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # ==========================================
+    # Paystack
+    # ==========================================
+
+    PAYSTACK_SECRET_KEY: str
+
+    PAYSTACK_PUBLIC_KEY: str
+
+    PAYSTACK_BASE_URL: str = "https://api.paystack.co"
+
+    PAYSTACK_CALLBACK_URL: str = (
+        "http://localhost:5173/payment/callback"
+    )
 
     # ==========================================
     # Pydantic Settings Configuration

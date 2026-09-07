@@ -19,6 +19,7 @@ from app.models.cart import Cart  # noqa: F401
 from app.models.cart_item import CartItem  # noqa: F401
 from app.models.order import Order  # noqa: F401
 from app.models.order_item import OrderItem  # noqa: F401
+from app.models.payment import Payment  # noqa: F401
 
 
 # ==========================================
@@ -54,9 +55,11 @@ TestingSessionLocal = sessionmaker(
 )
 def setup_test_database():
     """
-    Create all test database tables before the
-    test session, seed the database, and remove
-    everything afterward.
+    Create the test database tables before the
+    test session and remove everything afterward.
+
+    Individual test isolation is handled by the
+    function-scoped db fixture below.
     """
 
     # ------------------------------------------
@@ -66,29 +69,6 @@ def setup_test_database():
     Base.metadata.create_all(
         bind=test_engine,
     )
-
-    # ------------------------------------------
-    # Seed Test Database
-    # ------------------------------------------
-
-    session = TestingSessionLocal()
-
-    try:
-        seed_users(session)
-        seed_products(session)
-
-        session.commit()
-
-    except Exception:
-        session.rollback()
-        raise
-
-    finally:
-        session.close()
-
-    # ------------------------------------------
-    # Run Tests
-    # ------------------------------------------
 
     yield
 
@@ -108,13 +88,47 @@ def setup_test_database():
 @pytest.fixture
 def db() -> Session:
     """
-    Provide a database session for each test.
+    Provide a completely isolated database session
+    for each test.
+
+    The schema is recreated for every test so that
+    records created by one test cannot affect another.
     """
+
+    # ------------------------------------------
+    # Reset Schema
+    # ------------------------------------------
+
+    Base.metadata.drop_all(
+        bind=test_engine,
+    )
+
+    Base.metadata.create_all(
+        bind=test_engine,
+    )
+
+    # ------------------------------------------
+    # Create Session
+    # ------------------------------------------
 
     session = TestingSessionLocal()
 
     try:
+        # --------------------------------------
+        # Seed Test Data
+        # --------------------------------------
+
+        seed_users(session)
+        seed_products(session)
+
+        session.commit()
+
         yield session
+
+    except Exception:
+        session.rollback()
+        raise
+
     finally:
         session.close()
 
@@ -127,7 +141,7 @@ def db() -> Session:
 def client(db: Session):
     """
     Provide a FastAPI TestClient using the
-    test database session.
+    isolated test database session.
     """
 
     def override_get_db():

@@ -93,3 +93,10 @@ class Order(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    payments = relationship(
+        "Payment",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
