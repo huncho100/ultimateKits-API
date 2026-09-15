@@ -7,6 +7,8 @@ from app.routes.product import router as products_router
 from app.routes.cart import router as cart_router
 from app.routes.orders import router as orders_router
 from app.routes.admin import router as admin_router
+from app.routes.payment import router as payment_router
+
 
 
 # ==========================================
@@ -44,6 +46,8 @@ app.include_router(products_router)
 app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(admin_router)
+app.include_router(payment_router)
+
 
 
 # ==========================================
