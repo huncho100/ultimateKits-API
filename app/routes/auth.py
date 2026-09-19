@@ -1,3 +1,5 @@
+import smtplib
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,10 +9,14 @@ from app.database.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
+    MessageResponse,
     RegisterRequest,
+    ResetPasswordRequest,
     UserResponse,
 )
+from app.services.email_service import EmailService
 
 
 router = APIRouter(
@@ -159,3 +165,71 @@ def get_current_user_profile(
     """
 
     return UserResponse.model_validate(current_user)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+)
+def forgot_password(
+    data: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    user = AuthService.get_user_by_email(
+        db,
+        str(data.email),
+    )
+
+    if user is not None and user.is_active:
+        token = AuthService.create_password_reset_token(
+            user
+        )
+
+        try:
+            EmailService.send_password_reset_email(
+                user.email,
+                token,
+            )
+        except (OSError, RuntimeError, smtplib.SMTPException) as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to send password reset email.",
+            ) from error
+
+    return MessageResponse(
+        message=(
+            "If an active account exists for that email, "
+            "a password reset link has been sent."
+        )
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+)
+def reset_password(
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    if data.password != data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match.",
+        )
+
+    try:
+        AuthService.reset_password(
+            db,
+            data.token,
+            data.password,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+
+    return MessageResponse(
+        message="Password reset successfully."
+    )

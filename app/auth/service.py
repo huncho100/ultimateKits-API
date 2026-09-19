@@ -1,10 +1,15 @@
+from datetime import timedelta
+
+import jwt
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.user import User
 from app.utils.security import (
     hash_password,
     verify_password,
     create_access_token,
+    decode_access_token,
 )
 
 
@@ -130,3 +135,59 @@ class AuthService:
                 "role": user.role,
             }
         )
+
+    # ==========================================
+    # Password Recovery
+    # ==========================================
+
+    @staticmethod
+    def create_password_reset_token(
+        user: User,
+    ) -> str:
+        return create_access_token(
+            {
+                "sub": str(user.id),
+                "purpose": "password_reset",
+            },
+            expires_delta=timedelta(
+                minutes=(
+                    settings.PASSWORD_RESET_EXPIRE_MINUTES
+                ),
+            ),
+        )
+
+    @staticmethod
+    def reset_password(
+        db: Session,
+        token: str,
+        password: str,
+    ) -> User:
+        try:
+            payload = decode_access_token(token)
+            user_id = int(payload["sub"])
+        except (
+            jwt.InvalidTokenError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as error:
+            raise ValueError(
+                "Invalid or expired reset token."
+            ) from error
+
+        if payload.get("purpose") != "password_reset":
+            raise ValueError(
+                "Invalid or expired reset token."
+            )
+
+        user = db.get(User, user_id)
+
+        if user is None or not user.is_active:
+            raise ValueError(
+                "Invalid or expired reset token."
+            )
+
+        user.password_hash = hash_password(password)
+        db.commit()
+        db.refresh(user)
+        return user

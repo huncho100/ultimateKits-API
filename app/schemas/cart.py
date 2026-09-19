@@ -32,6 +32,13 @@ class CartItemUpdate(BaseModel):
     )
 
 
+class CartSyncRequest(BaseModel):
+    items: list[CartItemCreate] = Field(
+        default_factory=list,
+        max_length=100,
+    )
+
+
 class CartItemResponse(BaseModel):
     """
     Cart item returned by the API.

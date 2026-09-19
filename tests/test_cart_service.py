@@ -95,6 +95,80 @@ def create_cart(
     return user, cart
 
 
+def test_sync_cart_replaces_items(
+    db: Session,
+):
+    _, cart = create_cart(db)
+    first_product = create_test_product(
+        db,
+        name="First Jersey",
+    )
+    second_product = create_test_product(
+        db,
+        name="Second Jersey",
+    )
+
+    CartService.add_item(
+        db,
+        cart,
+        CartItemCreate(
+            product_id=first_product.id,
+            quantity=1,
+        ),
+    )
+
+    result = CartService.sync_cart(
+        db,
+        cart,
+        [
+            CartItemCreate(
+                product_id=second_product.id,
+                quantity=2,
+            ),
+            CartItemCreate(
+                product_id=second_product.id,
+                quantity=1,
+            ),
+        ],
+    )
+
+    assert len(result.items) == 1
+    assert result.items[0].product_id == second_product.id
+    assert result.items[0].quantity == 3
+
+
+def test_sync_cart_does_not_clear_on_validation_error(
+    db: Session,
+):
+    _, cart = create_cart(db)
+    product = create_test_product(db)
+    CartService.add_item(
+        db,
+        cart,
+        CartItemCreate(
+            product_id=product.id,
+            quantity=2,
+        ),
+    )
+
+    with pytest.raises(HTTPException) as error:
+        CartService.sync_cart(
+            db,
+            cart,
+            [
+                CartItemCreate(
+                    product_id=999999,
+                    quantity=1,
+                )
+            ],
+        )
+
+    assert error.value.status_code == 404
+    db.expire(cart, ["items"])
+    assert len(cart.items) == 1
+    assert cart.items[0].product_id == product.id
+
+
 # ==========================================
 # Get Or Create Cart
 # ==========================================

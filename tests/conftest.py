@@ -1,8 +1,9 @@
 import pytest
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database.database import Base, get_db
 from app.main import app
@@ -26,16 +27,24 @@ from app.models.payment import Payment  # noqa: F401
 # Test Database
 # ==========================================
 
-TEST_DATABASE_URL = (
-    "postgresql://postgres:hangouts100"
-    "@localhost:5432/ultimatekits_test"
-)
+TEST_DATABASE_URL = "sqlite://"
 
 
 test_engine = create_engine(
     TEST_DATABASE_URL,
-    pool_pre_ping=True,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
+
+
+@event.listens_for(test_engine, "connect")
+def enable_sqlite_foreign_keys(
+    dbapi_connection,
+    _connection_record,
+):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 TestingSessionLocal = sessionmaker(

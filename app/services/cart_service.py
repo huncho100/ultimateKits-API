@@ -229,6 +229,98 @@ class CartService:
         db.commit()
 
     # ==========================================
+    # Synchronize Cart
+    # ==========================================
+
+    @staticmethod
+    def sync_cart(
+        db: Session,
+        cart: Cart,
+        items: list[CartItemCreate],
+    ) -> Cart:
+        """
+        Atomically replace a cart with the supplied items.
+        """
+
+        quantities: dict[int, int] = {}
+
+        for item in items:
+            quantities[item.product_id] = (
+                quantities.get(item.product_id, 0)
+                + item.quantity
+            )
+
+        products = (
+            db.query(Product)
+            .filter(Product.id.in_(quantities))
+            .all()
+            if quantities
+            else []
+        )
+        products_by_id = {
+            product.id: product
+            for product in products
+        }
+
+        missing_ids = (
+            set(quantities) - set(products_by_id)
+        )
+
+        if missing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "Products not found: "
+                    + ", ".join(
+                        str(product_id)
+                        for product_id in sorted(missing_ids)
+                    )
+                ),
+            )
+
+        unavailable_ids = [
+            product_id
+            for product_id, product
+            in products_by_id.items()
+            if not product.in_stock
+        ]
+
+        if unavailable_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Products out of stock: "
+                    + ", ".join(
+                        str(product_id)
+                        for product_id in sorted(unavailable_ids)
+                    )
+                ),
+            )
+
+        try:
+            (
+                db.query(CartItem)
+                .filter(CartItem.cart_id == cart.id)
+                .delete(synchronize_session=False)
+            )
+
+            for product_id, quantity in quantities.items():
+                db.add(
+                    CartItem(
+                        cart_id=cart.id,
+                        product_id=product_id,
+                        quantity=quantity,
+                    )
+                )
+
+            db.commit()
+            db.expire(cart, ["items"])
+            return cart
+        except Exception:
+            db.rollback()
+            raise
+
+    # ==========================================
     # Calculate Cart Total
     # ==========================================
 

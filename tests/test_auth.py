@@ -294,3 +294,85 @@ def test_inactive_user_cannot_login(client, db):
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password."
+
+
+def test_password_recovery_flow(
+    client,
+    monkeypatch,
+):
+    email = f"reset_{uuid.uuid4().hex}@example.com"
+    original_password = "OriginalPassword123!"
+    new_password = "UpdatedPassword123!"
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "first_name": "Reset",
+            "last_name": "User",
+            "email": email,
+            "password": original_password,
+            "confirm_password": original_password,
+        },
+    )
+    assert register_response.status_code == 201
+
+    sent: dict[str, str] = {}
+
+    def capture_email(
+        recipient: str,
+        token: str,
+    ):
+        sent["recipient"] = recipient
+        sent["token"] = token
+
+    monkeypatch.setattr(
+        (
+            "app.routes.auth.EmailService."
+            "send_password_reset_email"
+        ),
+        capture_email,
+    )
+
+    forgot_response = client.post(
+        "/auth/forgot-password",
+        json={"email": email},
+    )
+
+    assert forgot_response.status_code == 200
+    assert sent["recipient"] == email
+
+    reset_response = client.post(
+        "/auth/reset-password",
+        json={
+            "token": sent["token"],
+            "password": new_password,
+            "confirm_password": new_password,
+        },
+    )
+    assert reset_response.status_code == 200
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": new_password,
+        },
+    )
+    assert login_response.status_code == 200
+
+
+def test_forgot_password_does_not_reveal_unknown_email(
+    client,
+):
+    response = client.post(
+        "/auth/forgot-password",
+        json={
+            "email": (
+                f"missing_{uuid.uuid4().hex}@example.com"
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"].startswith(
+        "If an active account exists"
+    )

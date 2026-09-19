@@ -9,6 +9,7 @@ from app.schemas.cart import (
     CartItemResponse,
     CartItemUpdate,
     CartResponse,
+    CartSyncRequest,
 )
 from app.services.cart_service import CartService
 
@@ -17,6 +18,19 @@ router = APIRouter(
     prefix="/cart",
     tags=["Cart"],
 )
+
+
+@router.put(
+    "",
+    response_model=CartResponse,
+)
+def sync_cart(
+    data: CartSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    cart = CartService.get_cart(db, current_user.id)
+    return CartService.sync_cart(db, cart, data.items)
 
 
 # ==========================================
