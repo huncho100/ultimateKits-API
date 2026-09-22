@@ -1,6 +1,7 @@
 from decimal import Decimal
 import uuid
 
+from app.core.config import settings
 from app.models.cart import Cart
 from app.models.cart_item import CartItem
 from app.models.product import Product
@@ -720,3 +721,145 @@ def test_update_cart_item_invalid_quantity(
         "✓ Invalid cart update quantity "
         "validation test passed"
     )
+
+
+# ==========================================
+# Quantity Ceiling
+# ==========================================
+
+MAX_QUANTITY = settings.MAX_CART_ITEM_QUANTITY
+
+
+def test_add_cart_item_rejects_quantity_above_limit(
+    client,
+    db,
+):
+    """
+    A single oversized request is refused by validation.
+    """
+
+    user = create_test_user(db)
+    product = create_test_product(db)
+
+    response = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": MAX_QUANTITY + 1,
+        },
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 422
+
+
+def test_repeated_adds_cannot_exceed_quantity_limit(
+    client,
+    db,
+):
+    """
+    Adding the same product twice accumulates. The ceiling
+    has to apply to the resulting quantity, not just to
+    each request in isolation.
+    """
+
+    user = create_test_user(db)
+    product = create_test_product(db)
+    headers = auth_headers(user)
+
+    first = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": MAX_QUANTITY,
+        },
+        headers=headers,
+    )
+
+    assert first.status_code == 201
+
+    second = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": 1,
+        },
+        headers=headers,
+    )
+
+    assert second.status_code == 400
+    assert "cannot exceed" in second.json()["detail"]
+
+    cart = client.get(
+        "/cart",
+        headers=headers,
+    )
+
+    assert cart.status_code == 200
+    assert (
+        cart.json()["items"][0]["quantity"]
+        == MAX_QUANTITY
+    )
+
+
+def test_sync_cart_rejects_accumulated_quantity(
+    client,
+    db,
+):
+    """
+    The same product listed twice in one sync is summed,
+    so the sum is what the ceiling must be checked against.
+    """
+
+    user = create_test_user(db)
+    product = create_test_product(db)
+
+    response = client.put(
+        "/cart",
+        json={
+            "items": [
+                {
+                    "product_id": product.id,
+                    "quantity": MAX_QUANTITY,
+                },
+                {
+                    "product_id": product.id,
+                    "quantity": 1,
+                },
+            ],
+        },
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 400
+    assert "cannot exceed" in response.json()["detail"]
+
+
+def test_update_cart_item_rejects_quantity_above_limit(
+    client,
+    db,
+):
+    user = create_test_user(db)
+    product = create_test_product(db)
+    headers = auth_headers(user)
+
+    created = client.post(
+        "/cart/items",
+        json={
+            "product_id": product.id,
+            "quantity": 1,
+        },
+        headers=headers,
+    )
+
+    assert created.status_code == 201
+
+    response = client.patch(
+        f"/cart/items/{created.json()['id']}",
+        json={
+            "quantity": MAX_QUANTITY + 1,
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 422

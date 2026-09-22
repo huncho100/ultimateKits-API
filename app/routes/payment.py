@@ -1,9 +1,14 @@
+import json
+import logging
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Request,
     status,
 )
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -12,9 +17,13 @@ from app.models.user import User
 from app.schemas.payment import (
     PaymentInitializeResponse,
     PaymentVerificationResponse,
+    PaymentWebhookResponse,
 )
 from app.services.order_service import OrderService
 from app.services.payment_service import PaymentService
+
+
+logger = logging.getLogger(__name__)
 
 
 # ==========================================
@@ -98,4 +107,93 @@ def verify_payment(
         db,
         reference,
         current_user,
+    )
+
+
+# ==========================================
+# Paystack Webhook
+# ==========================================
+
+@router.post(
+    "/webhook",
+    response_model=PaymentWebhookResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def paystack_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Receive a Paystack transaction event.
+
+    Without this, an order is only ever settled if the
+    customer's browser makes it back to the callback page.
+    A closed tab, a dropped connection or a payment
+    completed on the bank's app leaves money taken and the
+    order sitting unpaid.
+
+    The endpoint is deliberately unauthenticated - Paystack
+    cannot hold a user session - so authenticity rests
+    entirely on the HMAC signature over the raw body.
+    """
+
+    raw_body = await request.body()
+
+    # --------------------------------------
+    # Verify Signature
+    # --------------------------------------
+
+    if not PaymentService.verify_webhook_signature(
+        raw_body,
+        request.headers.get("x-paystack-signature"),
+    ):
+        logger.warning(
+            "Rejected Paystack webhook with an invalid "
+            "signature.",
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature.",
+        )
+
+    # --------------------------------------
+    # Parse Payload
+    # --------------------------------------
+
+    # Only parsed after the signature is confirmed, so an
+    # unauthenticated caller cannot reach the parser.
+
+    try:
+        event = json.loads(raw_body)
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook payload.",
+        ) from error
+
+    if not isinstance(event, dict):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid webhook payload.",
+        )
+
+    # --------------------------------------
+    # Apply Event
+    # --------------------------------------
+
+    # The session is synchronous, so the database work runs
+    # off the event loop rather than blocking every other
+    # request while it completes.
+
+    outcome = await run_in_threadpool(
+        PaymentService.handle_webhook_event,
+        db,
+        event,
+    )
+
+    return PaymentWebhookResponse(
+        status="received",
+        outcome=outcome,
     )

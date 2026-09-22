@@ -17,13 +17,29 @@ class Settings(BaseSettings):
 
     APP_VERSION: str = "1.0.0"
 
-    DEBUG: bool = True
+    # Defaults to off so that a missing or incomplete .env
+    # cannot accidentally run production with the interactive
+    # docs and full OpenAPI schema exposed. Set DEBUG=True in
+    # a local .env for development.
+    DEBUG: bool = False
 
     # ==========================================
     # Frontend
     # ==========================================
 
     FRONTEND_URL: str = "http://localhost:5173"
+
+    # ==========================================
+    # Catalog / Cart Limits
+    # ==========================================
+
+    # Largest quantity a customer may hold of a single
+    # product. Without a ceiling, a crafted request produces
+    # a line total that exceeds the Numeric(10, 2) columns
+    # the order tables use, which fails at the database
+    # rather than at validation. Adjust here if the business
+    # wants to allow bulk orders.
+    MAX_CART_ITEM_QUANTITY: int = 99
 
     # ==========================================
     # Database

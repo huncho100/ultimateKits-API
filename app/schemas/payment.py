@@ -68,3 +68,21 @@ class PaymentVerificationResponse(BaseModel):
     currency: str
     channel: str | None
     paid_at: datetime | None
+
+
+# ==========================================
+# Payment Webhook Response
+# ==========================================
+
+class PaymentWebhookResponse(BaseModel):
+    """
+    Acknowledgement returned to the payment provider.
+
+    Paystack retries any event it does not see acknowledged,
+    so this is returned for events that were applied and for
+    events that were deliberately ignored alike. "outcome"
+    records which, for operators reading provider logs.
+    """
+
+    status: str
+    outcome: str

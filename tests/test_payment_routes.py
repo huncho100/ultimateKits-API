@@ -457,6 +457,7 @@ def test_verify_payment_success(
                 "status": True,
                 "data": {
                     "amount": 10000,
+                    "currency": "NGN",
                     "status": "success",
                     "channel": "card",
                     "id": 123456,
@@ -673,6 +674,7 @@ def test_verify_payment_amount_mismatch(
                 "status": True,
                 "data": {
                     "amount": 5000,
+                    "currency": "NGN",
                     "status": "success",
                     "channel": "card",
                     "id": 123456,
@@ -752,6 +754,7 @@ def test_verify_payment_failed(
                 "status": True,
                 "data": {
                     "amount": 10000,
+                    "currency": "NGN",
                     "status": "failed",
                     "channel": "card",
                     "id": 987654,

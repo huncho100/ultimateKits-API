@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.user import User
 from app.utils.security import (
+    TokenType,
     hash_password,
     verify_password,
     create_access_token,
     decode_access_token,
+    token_predates_password_change,
+    utc_now_seconds,
 )
 
 
@@ -133,7 +136,8 @@ class AuthService:
                 "sub": str(user.id),
                 "email": user.email,
                 "role": user.role,
-            }
+            },
+            token_type=TokenType.ACCESS,
         )
 
     # ==========================================
@@ -154,6 +158,7 @@ class AuthService:
                     settings.PASSWORD_RESET_EXPIRE_MINUTES
                 ),
             ),
+            token_type=TokenType.PASSWORD_RESET,
         )
 
     @staticmethod
@@ -162,6 +167,17 @@ class AuthService:
         token: str,
         password: str,
     ) -> User:
+        """
+        Reset a user's password using a reset token.
+
+        The token must be a password reset token, must not
+        have been used already, and must not predate a
+        previous reset. Completing a reset stamps
+        password_changed_at, which simultaneously makes this
+        token single-use and invalidates every access token
+        issued before now.
+        """
+
         try:
             payload = decode_access_token(token)
             user_id = int(payload["sub"])
@@ -175,7 +191,13 @@ class AuthService:
                 "Invalid or expired reset token."
             ) from error
 
-        if payload.get("purpose") != "password_reset":
+        # An access token must not be usable to change a
+        # password, just as a reset token must not be usable
+        # as a session. Both claims are required.
+        if (
+            payload.get("type") != TokenType.PASSWORD_RESET
+            or payload.get("purpose") != "password_reset"
+        ):
             raise ValueError(
                 "Invalid or expired reset token."
             )
@@ -187,7 +209,21 @@ class AuthService:
                 "Invalid or expired reset token."
             )
 
+        # Replay protection. inclusive=True also rejects a
+        # token issued in the same second as the reset it
+        # performed, so a reset link cannot be used twice.
+        if token_predates_password_change(
+            payload,
+            user.password_changed_at,
+            inclusive=True,
+        ):
+            raise ValueError(
+                "Invalid or expired reset token."
+            )
+
         user.password_hash = hash_password(password)
+        user.password_changed_at = utc_now_seconds()
+
         db.commit()
         db.refresh(user)
         return user

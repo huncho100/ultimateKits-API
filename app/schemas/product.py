@@ -79,6 +79,14 @@ class ProductCreate(BaseModel):
 
     in_stock: bool = True
 
+    # Leave unset to keep the product uncounted, where
+    # in_stock alone decides availability. Give it a number
+    # to have that number enforced.
+    stock_quantity: int | None = Field(
+        default=None,
+        ge=0,
+    )
+
 
 # ==========================================
 # Product Update
@@ -158,6 +166,11 @@ class ProductUpdate(BaseModel):
 
     in_stock: bool | None = None
 
+    stock_quantity: int | None = Field(
+        default=None,
+        ge=0,
+    )
+
 
 # ==========================================
 # Product Response
@@ -198,6 +211,11 @@ class ProductResponse(BaseModel):
     is_best_seller: bool
 
     in_stock: bool
+
+    # Defaulted rather than merely nullable: an uncounted
+    # product is represented by leaving this out entirely,
+    # so omitting it must not be a validation error.
+    stock_quantity: int | None = None
 
     created_at: datetime
 

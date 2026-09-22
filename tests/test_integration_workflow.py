@@ -1,9 +1,47 @@
+import hashlib
+import hmac
+import json
 from decimal import Decimal
 
+import httpx
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 
-def test_complete_customer_purchase_workflow(client: TestClient):
+
+# ==========================================
+# Paystack Test Doubles
+# ==========================================
+
+class _MockResponse:
+    """
+    Minimal stand-in for an httpx response.
+    """
+
+    def __init__(self, json_data, status_code=200):
+        self.status_code = status_code
+        self._json_data = json_data
+
+    def json(self):
+        return self._json_data
+
+
+def _sign(body: bytes) -> str:
+    """
+    Sign a webhook body the way Paystack signs it.
+    """
+
+    return hmac.new(
+        settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
+        body,
+        hashlib.sha512,
+    ).hexdigest()
+
+
+def test_complete_customer_purchase_workflow(
+    client: TestClient,
+    monkeypatch,
+):
     """
     Verify the complete customer purchase workflow:
 
@@ -17,7 +55,10 @@ def test_complete_customer_purchase_workflow(client: TestClient):
         -> Verify cart
         -> Create order
         -> Verify order
-        -> Verify cart is empty
+        -> Verify cart survives an unpaid order
+        -> Initialize payment
+        -> Settle payment by webhook
+        -> Verify order is paid and cart is empty
         -> Get orders
         -> Get individual order
     """
@@ -252,8 +293,112 @@ def test_complete_customer_purchase_workflow(client: TestClient):
     assert Decimal(str(order_data["total_amount"])) == expected_subtotal
 
     # ==========================================
-    # 11. Verify Cart Is Empty
+    # 11. Verify Cart Survives An Unpaid Order
     # ==========================================
+
+    # The order exists but nothing has been paid yet, so the
+    # basket must still be there. Emptying it now would strand
+    # a customer whose card is about to be declined.
+
+    cart_response = client.get(
+        "/cart",
+        headers=headers,
+    )
+
+    assert cart_response.status_code == 200
+
+    cart_data = cart_response.json()
+
+    assert len(cart_data["items"]) == 1
+    assert cart_data["items"][0]["product_id"] == product_id
+
+    # ==========================================
+    # 12. Initialize Payment
+    # ==========================================
+
+    def mock_paystack_initialize(*args, **kwargs):
+        # Echo the reference back the way Paystack does, so
+        # the webhook below settles the payment the server
+        # actually recorded.
+        return _MockResponse(
+            {
+                "status": True,
+                "data": {
+                    "authorization_url": (
+                        "https://checkout.paystack.com/"
+                        "integration"
+                    ),
+                    "access_code": (
+                        "integration-access-code"
+                    ),
+                    "reference": (
+                        kwargs["json"]["reference"]
+                    ),
+                },
+            }
+        )
+
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        mock_paystack_initialize,
+    )
+
+    initialize_response = client.post(
+        f"/payments/initialize/{order_id}",
+        headers=headers,
+    )
+
+    assert initialize_response.status_code == 200
+
+    reference = initialize_response.json()["reference"]
+
+    assert reference.startswith("UK-")
+
+    # ==========================================
+    # 13. Settle Payment By Webhook
+    # ==========================================
+
+    # Paystack, not the browser, is the authority here. The
+    # customer never returns to the callback in this journey.
+
+    event_body = json.dumps(
+        {
+            "event": "charge.success",
+            "data": {
+                "reference": reference,
+                "amount": int(expected_subtotal * 100),
+                "currency": "NGN",
+                "status": "success",
+                "channel": "card",
+                "id": 9_000_001,
+            },
+        }
+    ).encode("utf-8")
+
+    webhook_response = client.post(
+        "/payments/webhook",
+        content=event_body,
+        headers={
+            "Content-Type": "application/json",
+            "x-paystack-signature": _sign(event_body),
+        },
+    )
+
+    assert webhook_response.status_code == 200
+    assert webhook_response.json()["outcome"] == "settled"
+
+    # ==========================================
+    # 14. Verify Order Paid And Cart Empty
+    # ==========================================
+
+    paid_order_response = client.get(
+        f"/orders/{order_id}",
+        headers=headers,
+    )
+
+    assert paid_order_response.status_code == 200
+    assert paid_order_response.json()["status"] == "paid"
 
     cart_response = client.get(
         "/cart",
@@ -267,7 +412,7 @@ def test_complete_customer_purchase_workflow(client: TestClient):
     assert cart_data["items"] == []
 
     # ==========================================
-    # 12. Get Customer Orders
+    # 15. Get Customer Orders
     # ==========================================
 
     orders_response = client.get(
@@ -290,7 +435,7 @@ def test_complete_customer_purchase_workflow(client: TestClient):
     assert order_id in order_ids
 
     # ==========================================
-    # 13. Get Individual Order
+    # 16. Get Individual Order
     # ==========================================
 
     individual_order_response = client.get(
@@ -304,7 +449,7 @@ def test_complete_customer_purchase_workflow(client: TestClient):
 
     assert individual_order["id"] == order_id
     assert individual_order["user_id"] == me_data["id"]
-    assert individual_order["status"] == "pending"
+    assert individual_order["status"] == "paid"
 
     assert (
         Decimal(str(individual_order["total_amount"]))

@@ -1,3 +1,4 @@
+import logging
 import smtplib
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,9 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.services.email_service import EmailService
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -175,6 +179,16 @@ def forgot_password(
     data: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ):
+    """
+    Begin a password reset.
+
+    The response is deliberately identical whether or not
+    the email belongs to an account, and whether or not the
+    email was actually delivered. Any difference - including
+    a delivery failure surfaced as an error - tells an
+    attacker which addresses are registered.
+    """
+
     user = AuthService.get_user_by_email(
         db,
         str(data.email),
@@ -190,11 +204,20 @@ def forgot_password(
                 user.email,
                 token,
             )
-        except (OSError, RuntimeError, smtplib.SMTPException) as error:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Unable to send password reset email.",
-            ) from error
+        except (
+            OSError,
+            RuntimeError,
+            smtplib.SMTPException,
+        ):
+            # Logged for operators, invisible to the caller.
+            # The user id is recorded rather than the email
+            # address so the log does not accumulate PII,
+            # and the token is never logged.
+            logger.exception(
+                "Password reset email could not be sent "
+                "for user id %s.",
+                user.id,
+            )
 
     return MessageResponse(
         message=(

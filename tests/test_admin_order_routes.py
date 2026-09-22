@@ -320,7 +320,7 @@ def test_admin_can_update_order_status(
     order = create_test_order(
         db,
         customer.id,
-        status="pending",
+        status="paid",
     )
 
     response = client.patch(
@@ -544,6 +544,7 @@ def test_status_update_preserves_order_total(
     order = create_test_order(
         db,
         customer.id,
+        status="shipped",
         total_amount=Decimal("249.99"),
     )
 
@@ -561,3 +562,98 @@ def test_status_update_preserves_order_total(
 
     assert order.status == "delivered"
     assert order.total_amount == Decimal("249.99")
+
+
+# ==========================================
+# Payment Statuses Are Not Admin Settable
+# ==========================================
+
+
+def test_admin_cannot_mark_order_paid(
+    client: TestClient,
+    db: Session,
+):
+    """
+    Marking an order paid must require money to have moved.
+    The API has to refuse it even for an administrator.
+    """
+
+    admin = create_test_user(
+        db,
+        "admin-cannot-mark-paid@example.com",
+        role="admin",
+    )
+
+    customer = create_test_user(
+        db,
+        "cannot-mark-paid-customer@example.com",
+    )
+
+    order = create_test_order(
+        db,
+        customer.id,
+        status="pending",
+    )
+
+    response = client.patch(
+        f"/admin/orders/{order.id}",
+        headers=auth_headers(admin),
+        json={
+            "status": "paid",
+        },
+    )
+
+    assert response.status_code == 400
+
+    assert "payment process" in (
+        response.json()["detail"]
+    )
+
+    db.refresh(order)
+
+    assert order.status == "pending"
+
+
+# ==========================================
+# Illegal Transitions Are Refused
+# ==========================================
+
+
+def test_admin_cannot_reverse_a_delivered_order(
+    client: TestClient,
+    db: Session,
+):
+    admin = create_test_user(
+        db,
+        "admin-cannot-reverse@example.com",
+        role="admin",
+    )
+
+    customer = create_test_user(
+        db,
+        "cannot-reverse-customer@example.com",
+    )
+
+    order = create_test_order(
+        db,
+        customer.id,
+        status="delivered",
+    )
+
+    response = client.patch(
+        f"/admin/orders/{order.id}",
+        headers=auth_headers(admin),
+        json={
+            "status": "processing",
+        },
+    )
+
+    assert response.status_code == 400
+
+    assert "cannot move from" in (
+        response.json()["detail"]
+    )
+
+    db.refresh(order)
+
+    assert order.status == "delivered"

@@ -3,10 +3,14 @@ services:
     image: postgres:18
     container_name: ultimatekits-postgres
 
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: hangouts100
-      POSTGRES_DB: ultimatekits
+    # Database credentials are supplied via .env.db, which is
+    # git-ignored. Copy .env.db.example to .env.db and fill it in.
+    #
+    # These deliberately do NOT live in the application's .env:
+    # app settings use extra="forbid", so any POSTGRES_* key in
+    # .env causes Settings() to fail at import time.
+    env_file:
+      - .env.db
 
     ports:
       - "5432:5432"

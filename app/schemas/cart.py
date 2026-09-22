@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.config import settings
+
 
 # ==========================================
 # Cart Item Schemas
@@ -19,6 +21,7 @@ class CartItemCreate(BaseModel):
 
     quantity: int = Field(
         gt=0,
+        le=settings.MAX_CART_ITEM_QUANTITY,
     )
 
 
@@ -29,6 +32,7 @@ class CartItemUpdate(BaseModel):
 
     quantity: int = Field(
         gt=0,
+        le=settings.MAX_CART_ITEM_QUANTITY,
     )
 
 

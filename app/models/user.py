@@ -49,6 +49,17 @@ class User(Base):
         nullable=False,
     )
 
+    # When the password was last changed. Tokens issued
+    # before this moment are rejected, which makes a reset
+    # single-use and ends any session an attacker already
+    # holds. NULL means the password has never been reset.
+    password_changed_at: Mapped[datetime | None] = (
+        mapped_column(
+            DateTime(timezone=True),
+            nullable=True,
+        )
+    )
+
     # ==========================================
     # User Status / Role
     # ==========================================

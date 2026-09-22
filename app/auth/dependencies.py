@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.models.user import User
-from app.utils.security import decode_access_token
+from app.utils.security import (
+    TokenType,
+    decode_access_token,
+    token_predates_password_change,
+)
 
 
 # ==========================================
@@ -47,6 +51,24 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    # ------------------------------------------
+    # Reject tokens issued for another purpose
+    # ------------------------------------------
+
+    # A password reset token is a valid signature over the
+    # same user id. Without this check it authenticates as
+    # a full session, which defeats the point of scoping it
+    # to a reset. Absence of the claim fails closed.
+
+    if payload.get("type") != TokenType.ACCESS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token.",
             headers={
                 "WWW-Authenticate": "Bearer",
             },
@@ -101,6 +123,29 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User no longer exists.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    # ------------------------------------------
+    # Token predates the last password change
+    # ------------------------------------------
+
+    # Changing a password must end every session that was
+    # open at the time, otherwise a user whose account is
+    # compromised cannot take it back.
+
+    if token_predates_password_change(
+        payload,
+        user.password_changed_at,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                "Session is no longer valid. "
+                "Please sign in again."
+            ),
             headers={
                 "WWW-Authenticate": "Bearer",
             },

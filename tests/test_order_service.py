@@ -352,15 +352,19 @@ def test_order_preserves_product_price_snapshot(
 
 
 # ==========================================
-# Cart Cleared After Checkout
+# Cart Survives Checkout
 # ==========================================
 
-def test_cart_cleared_after_order_creation(
+def test_cart_survives_order_creation(
     db: Session,
 ):
     """
-    The user's cart should be empty after
-    a successful checkout.
+    Placing an order must not empty the cart.
+
+    The order is only a request to pay. If the cart were
+    cleared here, a customer whose card was declined would
+    come back to an empty basket and have to rebuild it from
+    memory. The cart is emptied when the payment succeeds.
     """
 
     user = create_test_user(
@@ -392,11 +396,127 @@ def test_cart_cleared_after_order_creation(
 
     db.refresh(cart)
 
-    assert len(cart.items) == 0
+    assert len(cart.items) == 1
+    assert cart.items[0].product_id == product.id
 
     print(
-        "✓ Cart cleared after checkout test "
-        "passed"
+        "✓ Cart survives checkout test passed"
+    )
+
+
+# ==========================================
+# Repeated Checkout
+# ==========================================
+
+def test_repeated_checkout_reuses_pending_order(
+    db: Session,
+):
+    """
+    A double-submitted checkout must not leave the customer
+    with two orders for the same basket.
+    """
+
+    user = create_test_user(
+        db,
+        email="repeat-checkout@example.com",
+    )
+
+    product = create_test_product(
+        db,
+        name="Repeat Checkout Jersey",
+    )
+
+    cart = create_test_cart(
+        db,
+        user,
+    )
+
+    add_cart_item(
+        db,
+        cart,
+        product,
+        quantity=2,
+    )
+
+    first = OrderService.create_order_from_cart(
+        db,
+        user.id,
+    )
+
+    second = OrderService.create_order_from_cart(
+        db,
+        user.id,
+    )
+
+    assert second.id == first.id
+
+    orders = (
+        db.query(Order)
+        .filter(Order.user_id == user.id)
+        .all()
+    )
+
+    assert len(orders) == 1
+
+    print(
+        "✓ Repeated checkout test passed"
+    )
+
+
+# ==========================================
+# Changed Cart Produces A New Order
+# ==========================================
+
+def test_changed_cart_creates_a_new_order(
+    db: Session,
+):
+    """
+    Reuse is keyed on what is actually being bought, so
+    adding to the basket still produces a distinct order.
+    """
+
+    user = create_test_user(
+        db,
+        email="changed-cart@example.com",
+    )
+
+    product = create_test_product(
+        db,
+        name="Changed Cart Jersey",
+    )
+
+    cart = create_test_cart(
+        db,
+        user,
+    )
+
+    cart_item = add_cart_item(
+        db,
+        cart,
+        product,
+        quantity=1,
+    )
+
+    first = OrderService.create_order_from_cart(
+        db,
+        user.id,
+    )
+
+    cart_item.quantity = 3
+
+    db.commit()
+    db.refresh(cart)
+
+    second = OrderService.create_order_from_cart(
+        db,
+        user.id,
+    )
+
+    assert second.id != first.id
+    assert second.items[0].quantity == 3
+
+    print(
+        "✓ Changed cart test passed"
     )
 
 

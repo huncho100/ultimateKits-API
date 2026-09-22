@@ -40,6 +40,7 @@ class ProductService:
             is_new=data.is_new,
             is_best_seller=data.is_best_seller,
             in_stock=data.in_stock,
+            stock_quantity=data.stock_quantity,
         )
 
         db.add(product)

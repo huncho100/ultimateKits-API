@@ -127,6 +127,24 @@ class Product(Base):
     )
 
     # ==========================================
+    # Stock Quantity
+    # ==========================================
+
+    # NULL means this product's stock is not counted:
+    # availability is decided by in_stock alone, which is how
+    # every product behaved before quantities existed. Giving
+    # a product a number turns counting on for that product
+    # and makes the number authoritative.
+    #
+    # Existing products were backfilled to NULL rather than
+    # to a guessed figure. Real opening quantities are an
+    # operator decision, not something this system can invent.
+    stock_quantity: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    # ==========================================
     # Timestamps
     # ==========================================
 

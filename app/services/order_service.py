@@ -3,9 +3,30 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.statuses import OrderStatus
 from app.models.cart import Cart
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.services.inventory_service import InventoryService
+
+
+def _order_signature(
+    items: list[OrderItem],
+) -> frozenset[tuple[int, int, Decimal]]:
+    """
+    Summarise what an order is for, so two orders placed
+    from the same unchanged cart can be recognised as the
+    same order.
+    """
+
+    return frozenset(
+        (
+            item.product_id,
+            item.quantity,
+            Decimal(item.unit_price),
+        )
+        for item in items
+    )
 
 
 class OrderService:
@@ -25,8 +46,14 @@ class OrderService:
         order items. Product prices are copied into
         the order as price snapshots.
 
-        The cart is cleared after the order is
-        successfully created.
+        The cart is deliberately left intact. It is emptied
+        when the order is actually paid for, so a customer
+        whose card is declined still has something to retry
+        with.
+
+        Placing the same unchanged cart twice returns the
+        order already waiting for payment rather than
+        creating a second one.
         """
 
         # ------------------------------------------
@@ -64,11 +91,42 @@ class OrderService:
                     detail="Product not found.",
                 )
 
-            if not product.in_stock:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Product is out of stock.",
-                )
+            InventoryService.assert_available(
+                product,
+                cart_item.quantity,
+            )
+
+        # ------------------------------------------
+        # Reuse An Unpaid Order For The Same Cart
+        # ------------------------------------------
+
+        # A double-submitted checkout, or a customer going
+        # back and pressing the button again, must not leave
+        # a trail of orders the customer never meant to
+        # place. Prices are part of the comparison, so a
+        # repriced cart still produces a new order.
+
+        requested = frozenset(
+            (
+                cart_item.product_id,
+                cart_item.quantity,
+                Decimal(cart_item.product.price),
+            )
+            for cart_item in cart.items
+        )
+
+        pending_orders = (
+            db.query(Order)
+            .filter(
+                Order.user_id == user_id,
+                Order.status == OrderStatus.PENDING,
+            )
+            .all()
+        )
+
+        for existing in pending_orders:
+            if _order_signature(existing.items) == requested:
+                return existing
 
         # ------------------------------------------
         # Create Order
@@ -76,7 +134,7 @@ class OrderService:
 
         order = Order(
             user_id=user_id,
-            status="pending",
+            status=OrderStatus.PENDING,
             total_amount=Decimal("0.00"),
         )
 
@@ -120,12 +178,6 @@ class OrderService:
         order.total_amount = total_amount.quantize(
             Decimal("0.01")
         )
-
-        # ------------------------------------------
-        # Clear Cart
-        # ------------------------------------------
-
-        cart.items.clear()
 
         # ------------------------------------------
         # Save Order

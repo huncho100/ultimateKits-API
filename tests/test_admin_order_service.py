@@ -142,28 +142,35 @@ def test_get_nonexistent_order(
 
 
 @pytest.mark.parametrize(
-    "new_status",
+    ("start_status", "new_status"),
     [
-        "pending",
-        "processing",
-        "shipped",
-        "delivered",
-        "cancelled",
+        ("paid", "processing"),
+        ("processing", "shipped"),
+        ("shipped", "delivered"),
+        ("pending", "cancelled"),
+        ("paid", "cancelled"),
+        ("processing", "cancelled"),
     ],
 )
 def test_update_order_status(
     db: Session,
+    start_status: str,
     new_status: str,
 ):
+    """
+    Every status an administrator owns can be reached from
+    the status that legitimately precedes it.
+    """
+
     user = create_test_user(
         db,
-        f"status-{new_status}@example.com",
+        f"status-{start_status}-{new_status}@example.com",
     )
 
     order = create_test_order(
         db,
         user.id,
-        status="pending",
+        status=start_status,
     )
 
     result = AdminOrderService.update_order_status(
@@ -173,6 +180,138 @@ def test_update_order_status(
     )
 
     assert result.status == new_status
+
+
+# ==========================================
+# Payment-Controlled Statuses
+# ==========================================
+
+
+@pytest.mark.parametrize(
+    "payment_status",
+    [
+        "pending",
+        "paid",
+        "payment_failed",
+    ],
+)
+def test_update_order_status_rejects_payment_statuses(
+    db: Session,
+    payment_status: str,
+):
+    """
+    An administrator must not be able to type an order into
+    "paid". Payment states record what the provider told us,
+    so allowing them here would let an order be marked paid
+    without any money having moved.
+    """
+
+    user = create_test_user(
+        db,
+        f"payment-status-{payment_status}@example.com",
+    )
+
+    order = create_test_order(
+        db,
+        user.id,
+        status="processing",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="set by the payment process",
+    ):
+        AdminOrderService.update_order_status(
+            db,
+            order,
+            payment_status,
+        )
+
+    assert order.status == "processing"
+
+
+# ==========================================
+# Illegal Transitions
+# ==========================================
+
+
+@pytest.mark.parametrize(
+    ("start_status", "new_status"),
+    [
+        # Fulfilment cannot begin before payment.
+        ("pending", "processing"),
+        ("payment_failed", "shipped"),
+        # Steps cannot be skipped.
+        ("paid", "shipped"),
+        ("paid", "delivered"),
+        ("processing", "delivered"),
+        # Finished orders stay finished.
+        ("delivered", "processing"),
+        ("cancelled", "processing"),
+        # Goods that have left are a return, which this
+        # system does not model.
+        ("shipped", "cancelled"),
+    ],
+)
+def test_update_order_status_rejects_illegal_transition(
+    db: Session,
+    start_status: str,
+    new_status: str,
+):
+    user = create_test_user(
+        db,
+        f"illegal-{start_status}-{new_status}@example.com",
+    )
+
+    order = create_test_order(
+        db,
+        user.id,
+        status=start_status,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="cannot move from",
+    ):
+        AdminOrderService.update_order_status(
+            db,
+            order,
+            new_status,
+        )
+
+    assert order.status == start_status
+
+
+# ==========================================
+# Repeating A Status
+# ==========================================
+
+
+def test_update_order_status_allows_repeat(
+    db: Session,
+):
+    """
+    A second click on the same button is not an error.
+    """
+
+    user = create_test_user(
+        db,
+        "status-repeat@example.com",
+    )
+
+    order = create_test_order(
+        db,
+        user.id,
+        status="shipped",
+    )
+
+    result = AdminOrderService.update_order_status(
+        db,
+        order,
+        "shipped",
+    )
+
+    assert result.status == "shipped"
 
 
 # ==========================================
@@ -191,6 +330,7 @@ def test_update_order_status_normalizes_value(
     order = create_test_order(
         db,
         user.id,
+        status="processing",
     )
 
     result = AdminOrderService.update_order_status(

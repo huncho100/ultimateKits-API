@@ -148,7 +148,12 @@ activemq-data/
 *.sage.py
 
 # Environments
+# Ignore every .env variant (.env, .env.db, .env.production, ...)
+# but keep the committed templates.
 .env
+.env.*
+!.env.example
+!.env.db.example
 .envrc
 .venv
 env/
