@@ -12,6 +12,7 @@ from app.models.cart import Cart
 from app.models.cart_item import CartItem
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.payment import Payment
 from app.models.product import Product
 from app.models.user import User
 
@@ -32,6 +33,20 @@ CUSTOMER_PASSWORD = "CustomerPassword123!"
 # ==========================================
 # Seed Products
 # ==========================================
+#
+# `image` is a root-relative URL served by the
+# frontend out of ultimateKits-FE/public, so
+# "/images/products/football/arsenal-home.jpg" is the
+# file at public/images/products/football/arsenal-home.jpg.
+#
+# These paths used to be "/images/<file>.jpg", which
+# nothing served -- there was no public directory at
+# all -- so every product fell through to the "no
+# image" placeholder. Four of the eight also named
+# files that do not exist in any form. Those four are
+# None below rather than pointed at some other club's
+# jersey: a wrong photo is worse than an honest
+# placeholder. See docs/product-images.md.
 
 PRODUCTS = [
     {
@@ -44,7 +59,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.50"),
-        "image": "/images/manchester-united-home.jpg",
+        "image": "/images/products/football/manchester-united-home.jpg",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": True,
@@ -60,7 +75,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.80"),
-        "image": "/images/real-madrid-home.jpg",
+        "image": "/images/products/football/real-madrid-home.jpg",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": True,
@@ -76,7 +91,7 @@ PRODUCTS = [
         "price": Decimal("84.99"),
         "old_price": Decimal("99.99"),
         "rating": Decimal("4.60"),
-        "image": "/images/arsenal-home.jpg",
+        "image": "/images/products/football/arsenal-home.jpg",
         "is_featured": True,
         "is_new": False,
         "is_best_seller": True,
@@ -92,7 +107,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": None,
         "rating": Decimal("4.70"),
-        "image": "/images/barcelona-home.jpg",
+        "image": "/images/products/football/barcelona-home.jpg",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": False,
@@ -108,7 +123,9 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.40"),
-        "image": "/images/liverpool-home.jpg",
+        # No Liverpool home jersey photo in the
+        # repository. Needs one uploading.
+        "image": None,
         "is_featured": False,
         "is_new": True,
         "is_best_seller": True,
@@ -124,7 +141,9 @@ PRODUCTS = [
         "price": Decimal("84.99"),
         "old_price": None,
         "rating": Decimal("4.50"),
-        "image": "/images/bayern-munich-home.jpg",
+        # No Bayern Munich photo in the repository.
+        # Needs one uploading.
+        "image": None,
         "is_featured": False,
         "is_new": False,
         "is_best_seller": True,
@@ -140,7 +159,10 @@ PRODUCTS = [
         "price": Decimal("79.99"),
         "old_price": Decimal("99.99"),
         "rating": Decimal("4.30"),
-        "image": "/images/inter-milan-home.jpg",
+        # Only a retro Inter shirt is in the
+        # repository, which is a different product.
+        # Needs a home jersey photo uploading.
+        "image": None,
         "is_featured": False,
         "is_new": False,
         "is_best_seller": False,
@@ -156,7 +178,9 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": None,
         "rating": Decimal("4.60"),
-        "image": "/images/psg-home.jpg",
+        # No PSG photo in the repository. Needs one
+        # uploading.
+        "image": None,
         "is_featured": True,
         "is_new": True,
         "is_best_seller": False,
