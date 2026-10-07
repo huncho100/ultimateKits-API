@@ -7,6 +7,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -62,6 +63,29 @@ class Product(Base):
 
     brand: Mapped[str | None] = mapped_column(
         String(100),
+        nullable=True,
+    )
+
+    # ==========================================
+    # Product Description
+    # ==========================================
+
+    # NULL means no description has been published for
+    # this product, which is how every product behaved
+    # before this column existed. The product page says
+    # so plainly rather than showing invented copy.
+    #
+    # Existing products were backfilled to NULL rather
+    # than to generated text. Descriptions are seller
+    # claims about goods -- fabric, licensing, fit --
+    # and only an administrator can write them
+    # truthfully. See docs/product-content.md.
+    #
+    # Text rather than String(n): a description has no
+    # natural length limit worth enforcing in the
+    # column.
+    description: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 

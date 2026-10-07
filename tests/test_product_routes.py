@@ -588,3 +588,272 @@ def test_delete_nonexistent_product(
     print(
         "✓ Delete nonexistent product test passed"
     )
+
+# ==========================================
+# Product Description
+# ==========================================
+
+def test_get_product_serializes_null_description(
+    client,
+    db,
+):
+    """
+    A product with no description still exposes the
+    field, as null. The frontend maps it straight
+    through and the Description tab shows its empty
+    state.
+    """
+
+    product = create_test_product(db)
+
+    response = client.get(
+        f"/products/{product.id}",
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "description" in data
+    assert data["description"] is None
+
+    print(
+        "✓ Null description serialization test passed"
+    )
+
+
+def test_list_products_includes_description(
+    client,
+    db,
+):
+    create_test_product(db)
+
+    response = client.get(
+        "/products",
+    )
+
+    assert response.status_code == 200
+
+    for item in response.json():
+        assert "description" in item
+
+    print(
+        "✓ List products description test passed"
+    )
+
+
+def test_create_product_with_description(
+    client,
+    db,
+):
+    headers = create_admin_headers(db)
+
+    response = client.post(
+        "/products",
+        json={
+            **PRODUCT_DATA,
+            "description": (
+                "Official home shirt for the 2024/25 "
+                "season."
+            ),
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["description"] == (
+        "Official home shirt for the 2024/25 season."
+    )
+
+    print(
+        "✓ Create product with description test passed"
+    )
+
+
+def test_create_product_without_description(
+    client,
+    db,
+):
+    """
+    Omitting description is valid and produces null
+    rather than invented copy.
+    """
+
+    headers = create_admin_headers(db)
+
+    response = client.post(
+        "/products",
+        json=PRODUCT_DATA,
+        headers=headers,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["description"] is None
+
+    print(
+        "✓ Create without description test passed"
+    )
+
+
+def test_update_product_description(
+    client,
+    db,
+):
+    product = create_test_product(db)
+
+    headers = create_admin_headers(db)
+
+    response = client.patch(
+        f"/products/{product.id}",
+        json={"description": "A published description."},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["description"] == (
+        "A published description."
+    )
+
+    # Publishing a description must not disturb
+    # anything else about the product.
+    assert Decimal(data["price"]) == Decimal("89.99")
+    assert data["category"] == PRODUCT_DATA["category"]
+    assert data["image"] == PRODUCT_DATA["image"]
+    assert data["in_stock"] == PRODUCT_DATA["in_stock"]
+    assert data["stock_quantity"] is None
+
+    print(
+        "✓ Update product description test passed"
+    )
+
+
+def test_update_product_preserves_description(
+    client,
+    db,
+):
+    """
+    An update that does not mention description leaves a
+    published one in place.
+    """
+
+    product = create_test_product(db)
+
+    headers = create_admin_headers(db)
+
+    client.patch(
+        f"/products/{product.id}",
+        json={"description": "A published description."},
+        headers=headers,
+    )
+
+    response = client.patch(
+        f"/products/{product.id}",
+        json={"price": "79.99"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert Decimal(data["price"]) == Decimal("79.99")
+    assert data["description"] == (
+        "A published description."
+    )
+
+    print(
+        "✓ Preserve description on update test passed"
+    )
+
+
+def test_update_product_clears_description(
+    client,
+    db,
+):
+    """
+    Sending null withdraws a published description.
+    """
+
+    product = create_test_product(db)
+
+    headers = create_admin_headers(db)
+
+    client.patch(
+        f"/products/{product.id}",
+        json={"description": "A published description."},
+        headers=headers,
+    )
+
+    response = client.patch(
+        f"/products/{product.id}",
+        json={"description": None},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["description"] is None
+
+    print(
+        "✓ Clear description test passed"
+    )
+
+
+def test_customer_cannot_set_description(
+    client,
+    db,
+):
+    """
+    Descriptions are seller claims about goods, so
+    publishing one stays an administrator action.
+    """
+
+    product = create_test_product(db)
+
+    headers = create_customer_headers(db)
+
+    response = client.patch(
+        f"/products/{product.id}",
+        json={"description": "Unauthorised text."},
+        headers=headers,
+    )
+
+    assert response.status_code == 403
+
+    print(
+        "✓ Customer cannot set description test passed"
+    )
+
+
+def test_seeded_products_have_no_description(
+    client,
+    db,
+):
+    """
+    The seed data publishes no descriptions. Nothing in
+    this change may invent them.
+    """
+
+    response = client.get(
+        "/products",
+    )
+
+    assert response.status_code == 200
+
+    products = response.json()
+
+    assert products
+
+    assert all(
+        item["description"] is None
+        for item in products
+    )
+
+    print(
+        "✓ Seeded products have no description"
+    )

@@ -46,6 +46,12 @@ class ProductCreate(BaseModel):
         max_length=100,
     )
 
+    # Omit to publish no description. The product page
+    # says so plainly rather than showing invented copy.
+    description: str | None = Field(
+        default=None,
+    )
+
     price: Decimal = Field(
         ...,
         gt=0,
@@ -133,6 +139,12 @@ class ProductUpdate(BaseModel):
         max_length=100,
     )
 
+    # Send null to withdraw a published description and
+    # return the product to the empty state.
+    description: str | None = Field(
+        default=None,
+    )
+
     price: Decimal | None = Field(
         default=None,
         gt=0,
@@ -195,6 +207,12 @@ class ProductResponse(BaseModel):
     league: str | None
 
     brand: str | None
+
+    # Defaulted rather than merely nullable, for the same
+    # reason as stock_quantity below: a product with no
+    # published description leaves this out entirely, so
+    # omitting it must not be a validation error.
+    description: str | None = None
 
     price: Decimal
 

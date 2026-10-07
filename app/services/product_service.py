@@ -32,6 +32,7 @@ class ProductService:
             team=data.team,
             league=data.league,
             brand=data.brand,
+            description=data.description,
             price=data.price,
             old_price=data.old_price,
             rating=data.rating,

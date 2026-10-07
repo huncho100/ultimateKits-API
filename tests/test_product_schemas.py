@@ -290,3 +290,115 @@ def test_product_response_serialization():
     assert data["price"] == Decimal("89.99")
     assert data["rating"] == 4.5
     assert data["is_featured"] is True
+
+# ==========================================
+# Product Description
+# ==========================================
+
+def test_product_create_description_defaults_to_none():
+    """
+    A product created without a description has none.
+
+    Nothing is generated to fill the gap: an absent
+    description stays absent.
+    """
+
+    product = ProductCreate(**VALID_PRODUCT)
+
+    assert product.description is None
+
+
+def test_product_create_accepts_description():
+    product = ProductCreate(
+        **VALID_PRODUCT,
+        description=(
+            "Worn by the first team for the 2024/25 "
+            "season."
+        ),
+    )
+
+    assert product.description == (
+        "Worn by the first team for the 2024/25 season."
+    )
+
+
+def test_product_create_description_keeps_line_breaks():
+    """
+    Paragraph breaks survive the schema untouched; the
+    Description tab renders them with whitespace-pre-line.
+    """
+
+    text = "First paragraph.\n\nSecond paragraph."
+
+    product = ProductCreate(
+        **VALID_PRODUCT,
+        description=text,
+    )
+
+    assert product.description == text
+
+
+def test_product_update_description_unset_is_excluded():
+    """
+    An update that does not mention description must not
+    erase one that has already been published.
+
+    The service applies exclude_unset, so the field has
+    to be absent from the dump rather than present as
+    None.
+    """
+
+    update = ProductUpdate(name="Renamed Jersey")
+
+    dumped = update.model_dump(exclude_unset=True)
+
+    assert "description" not in dumped
+
+
+def test_product_update_description_explicit_none_is_kept():
+    """
+    Sending null is how an administrator withdraws a
+    published description, so it must survive the dump.
+    """
+
+    update = ProductUpdate(description=None)
+
+    dumped = update.model_dump(exclude_unset=True)
+
+    assert "description" in dumped
+    assert dumped["description"] is None
+
+
+def test_product_response_description_optional():
+    """
+    A product with no description must still validate.
+    """
+
+    now = datetime.now()
+
+    product = ProductResponse(
+        id=1,
+        **VALID_PRODUCT,
+        created_at=now,
+        updated_at=now,
+    )
+
+    assert product.description is None
+    assert product.model_dump()["description"] is None
+
+
+def test_product_response_serializes_description():
+    now = datetime.now()
+
+    product = ProductResponse(
+        id=1,
+        **VALID_PRODUCT,
+        description="Official home shirt.",
+        created_at=now,
+        updated_at=now,
+    )
+
+    assert (
+        product.model_dump()["description"]
+        == "Official home shirt."
+    )

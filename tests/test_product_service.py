@@ -211,3 +211,156 @@ def test_delete_product(db):
     assert deleted_product is None
 
     print("✓ Delete product test passed")
+
+# ==========================================
+# Product Description
+# ==========================================
+
+def test_create_product_without_description(db):
+    """
+    A product created without a description is stored
+    with NULL, not with generated text.
+    """
+
+    product = ProductService.create_product(
+        db,
+        create_product_data(),
+    )
+
+    assert product.description is None
+
+
+def test_create_product_with_description(db):
+    """
+    The create path passes description through to the
+    model. ProductService.create_product builds Product
+    from an explicit keyword list, so a field missing
+    from that list would be silently dropped here.
+    """
+
+    data = ProductCreate(
+        name="Arsenal Home Jersey",
+        sport="Football",
+        category="Jerseys",
+        price=Decimal("84.99"),
+        description="Official home shirt.",
+    )
+
+    product = ProductService.create_product(
+        db,
+        data,
+    )
+
+    assert product.description == "Official home shirt."
+
+
+def test_update_product_sets_description(db):
+    product = ProductService.create_product(
+        db,
+        create_product_data(),
+    )
+
+    assert product.description is None
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(
+            description="Now with a description.",
+        ),
+    )
+
+    assert updated.description == (
+        "Now with a description."
+    )
+
+
+def test_update_product_preserves_description(db):
+    """
+    An unrelated update must leave a published
+    description alone.
+    """
+
+    product = ProductService.create_product(
+        db,
+        ProductCreate(
+            name="Liverpool Home Jersey",
+            sport="Football",
+            category="Jerseys",
+            price=Decimal("89.99"),
+            description="Official home shirt.",
+        ),
+    )
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(price=Decimal("79.99")),
+    )
+
+    assert updated.price == Decimal("79.99")
+    assert updated.description == "Official home shirt."
+
+
+def test_update_product_clears_description(db):
+    """
+    Sending null withdraws a published description and
+    returns the product to the empty state.
+    """
+
+    product = ProductService.create_product(
+        db,
+        ProductCreate(
+            name="Chelsea Home Jersey",
+            sport="Football",
+            category="Jerseys",
+            price=Decimal("89.99"),
+            description="Official home shirt.",
+        ),
+    )
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(description=None),
+    )
+
+    assert updated.description is None
+
+
+def test_update_description_leaves_other_fields_alone(db):
+    """
+    Publishing a description must not disturb price,
+    stock, category, or image.
+    """
+
+    product = ProductService.create_product(
+        db,
+        create_product_data(),
+    )
+
+    before = (
+        product.price,
+        product.old_price,
+        product.category,
+        product.image,
+        product.in_stock,
+        product.stock_quantity,
+        product.rating,
+    )
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(description="A description."),
+    )
+
+    assert (
+        updated.price,
+        updated.old_price,
+        updated.category,
+        updated.image,
+        updated.in_stock,
+        updated.stock_quantity,
+        updated.rating,
+    ) == before
