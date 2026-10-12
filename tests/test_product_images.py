@@ -41,6 +41,24 @@ def test_seeded_product_image_paths_use_public_product_directory():
     assert images_by_name["Chelsea Home Jersey"] == (
         "/images/products/football/chelsea-home.webp"
     )
+    assert images_by_name["FC Barcelona Retro Jersey"] == (
+        "/images/products/retro/barca-retro.jpg"
+    )
+    assert images_by_name["England Retro Jersey"] == (
+        "/images/products/retro/england-retro.jpg"
+    )
+    assert images_by_name["Inter Milan Retro Jersey"] == (
+        "/images/products/retro/inter-retro.jpg"
+    )
+    assert images_by_name["Liverpool Retro Jersey"] == (
+        "/images/products/retro/liverpool-retro.jpg"
+    )
+    assert images_by_name["Nigeria Retro Jersey — Green Patterned"] == (
+        "/images/products/retro/nigeria-retro-green.jpg"
+    )
+    assert images_by_name["Nigeria Retro Jersey — White"] == (
+        "/images/products/retro/nigeria-retro-white.jpg"
+    )
 
 
 def test_product_image_migration_repairs_and_clears_paths():

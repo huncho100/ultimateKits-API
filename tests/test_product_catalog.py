@@ -65,10 +65,24 @@ def test_unfiltered_catalog_returns_every_record(client, db, collection_products
 @pytest.mark.parametrize(
     ("params", "index"),
     [
-        ({"league": "National Team"}, 0),
-        ({"sport": " football ", "league": " NATIONAL TEAM "}, 0),
-        ({"category": "retro"}, 1),
-        ({"sport": "Football", "category": " Retro "}, 1),
+        ({"league": "National Team", "team": "test country"}, 0),
+        (
+            {
+                "sport": " football ",
+                "league": " NATIONAL TEAM ",
+                "team": "test country",
+            },
+            0,
+        ),
+        ({"category": "retro", "team": "test club"}, 1),
+        (
+            {
+                "sport": "Football",
+                "category": " Retro ",
+                "team": "test club",
+            },
+            1,
+        ),
         ({"team": "test country"}, 0),
         ({"sport": "basketball"}, 2),
     ],
@@ -111,10 +125,16 @@ def test_blank_filters_are_rejected(client, field, value):
 def test_existing_football_filter_returns_all_seeded_products(client, db):
     expected_ids = [
         product.id
-        for product in db.query(Product).order_by(Product.id.desc()).all()
+        for product in db.query(Product)
+        .filter(Product.category == "Jerseys", Product.sport == "Football")
+        .order_by(Product.id.desc())
+        .all()
     ]
-    assert len(expected_ids) == len(PRODUCTS)
-    response = client.get("/products", params={"sport": "Football"})
+    assert len(expected_ids) == 9
+    response = client.get(
+        "/products",
+        params={"sport": "Football", "category": "Jerseys"},
+    )
 
     assert response.status_code == 200
     assert [product["id"] for product in response.json()] == expected_ids
@@ -122,6 +142,50 @@ def test_existing_football_filter_returns_all_seeded_products(client, db):
         product["category"] == "Jerseys" and product["sport"] == "Football"
         for product in response.json()
     )
+
+
+def test_approved_retro_seed_metadata_and_collection_filters(client, db):
+    retro = client.get(
+        "/products",
+        params={"sport": "Football", "category": "Retro"},
+    )
+    assert retro.status_code == 200
+    assert len(retro.json()) == 6
+
+    national_teams = client.get(
+        "/products",
+        params={"sport": "Football", "league": "National Team"},
+    )
+    assert national_teams.status_code == 200
+    assert {
+        (product["name"], product["category"])
+        for product in national_teams.json()
+    } == {
+        ("England Retro Jersey", "Retro"),
+        ("Nigeria Retro Jersey — Green Patterned", "Retro"),
+        ("Nigeria Retro Jersey — White", "Retro"),
+    }
+
+    assert {
+        product["name"]
+        for product in retro.json()
+    } == {
+        "FC Barcelona Retro Jersey",
+        "England Retro Jersey",
+        "Inter Milan Retro Jersey",
+        "Liverpool Retro Jersey",
+        "Nigeria Retro Jersey — Green Patterned",
+        "Nigeria Retro Jersey — White",
+    }
+
+    for product in retro.json():
+        assert product["price"] == "25000.00"
+        assert product["sport"] == "Football"
+        assert product["rating"] == 0.0
+        assert product["old_price"] is None
+        assert product["stock_quantity"] is None
+        assert product["brand"] is None
+        assert product["in_stock"] is True
 
 
 def test_repeated_seed_preserves_existing_catalog(db, collection_products):
@@ -172,3 +236,23 @@ def test_seed_adds_missing_chelsea_once_without_overwriting_existing(db):
         product.id: (product.name, product.price, product.image)
         for product in db.query(Product).filter(Product.id.in_(before)).all()
     } == before
+
+
+def test_repeated_seed_adds_each_approved_retro_product_once(db):
+    approved_names = {
+        product["name"]
+        for product in PRODUCTS
+        if product["category"] == "Retro"
+    }
+    before_count = db.query(Product).count()
+
+    seed_products(db)
+    seed_products(db)
+    db.commit()
+
+    seeded = db.query(Product).filter(
+        Product.name.in_(approved_names)
+    ).all()
+    assert len(seeded) == 6
+    assert db.query(Product).count() == before_count
+    assert {product.name for product in seeded} == approved_names

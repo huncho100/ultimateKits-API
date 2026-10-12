@@ -54,12 +54,16 @@ Examples:
 with `sport=National%20Teams` or `sport=Retro` only matches records whose
 stored sport literally has that value; it does not select a collection.
 
-The sample seed currently contains nine current football club jerseys,
-including Chelsea. It does not create national team, retro, or basketball products.
-Image files in `ultimateKits-FE/public/images/products/` are not product
-records and do not populate the catalog. New seed entries require approved
-names, prices, metadata, and matching root-relative image paths; filenames
-alone cannot establish sellable product details.
+The sample seed contains nine current football club jerseys, including
+Chelsea, and six operator-approved Retro products. England and both Nigeria
+Retro products use `league=National Team`, so each is returned by both the
+National Teams and Retro collection filters without a duplicate record.
+The Nigeria Retro white shirt uses
+`/images/products/retro/nigeria-retro-white.jpg`. Image files in
+`ultimateKits-FE/public/images/products/` are not product records and do not
+populate the catalog. New seed entries require approved names, prices,
+metadata, and matching root-relative image paths; filenames alone cannot
+establish sellable product details.
 
 `seed_products` skips existing products by name without updating them.
 Use the existing seed workflow only after the additional catalog entries
