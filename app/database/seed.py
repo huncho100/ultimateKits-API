@@ -39,14 +39,12 @@ CUSTOMER_PASSWORD = "CustomerPassword123!"
 # "/images/products/football/arsenal-home.jpg" is the
 # file at public/images/products/football/arsenal-home.jpg.
 #
-# These paths used to be "/images/<file>.jpg", which
-# nothing served -- there was no public directory at
-# all -- so every product fell through to the "no
-# image" placeholder. Four of the eight also named
-# files that do not exist in any form. Those four are
-# None below rather than pointed at some other club's
-# jersey: a wrong photo is worse than an honest
-# placeholder. See docs/product-images.md.
+# Existing databases may still contain the former
+# "/images/<file>.jpg" paths. The product-image Alembic
+# migration moves those to the public directory paths,
+# attaches the supplied club photos, and clears paths
+# that do not resolve to a public image. See
+# docs/product-images.md.
 
 PRODUCTS = [
     {
@@ -59,7 +57,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.50"),
-        "image": "/images/products/football/manchester-united-home.jpg",
+        "image": "/images/products/football/manchester-united-home.webp",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": True,
@@ -75,7 +73,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.80"),
-        "image": "/images/products/football/real-madrid-home.jpg",
+        "image": "/images/products/football/real-madrid-home2.jpg",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": True,
@@ -123,9 +121,7 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": Decimal("109.99"),
         "rating": Decimal("4.40"),
-        # No Liverpool home jersey photo in the
-        # repository. Needs one uploading.
-        "image": None,
+        "image": "/images/products/football/liverpool-home.jpg",
         "is_featured": False,
         "is_new": True,
         "is_best_seller": True,
@@ -141,9 +137,7 @@ PRODUCTS = [
         "price": Decimal("84.99"),
         "old_price": None,
         "rating": Decimal("4.50"),
-        # No Bayern Munich photo in the repository.
-        # Needs one uploading.
-        "image": None,
+        "image": "/images/products/football/bayern-munich-home.jpg",
         "is_featured": False,
         "is_new": False,
         "is_best_seller": True,
@@ -159,10 +153,7 @@ PRODUCTS = [
         "price": Decimal("79.99"),
         "old_price": Decimal("99.99"),
         "rating": Decimal("4.30"),
-        # Only a retro Inter shirt is in the
-        # repository, which is a different product.
-        # Needs a home jersey photo uploading.
-        "image": None,
+        "image": "/images/products/football/inter-milan-home.jpg",
         "is_featured": False,
         "is_new": False,
         "is_best_seller": False,
@@ -178,9 +169,23 @@ PRODUCTS = [
         "price": Decimal("89.99"),
         "old_price": None,
         "rating": Decimal("4.60"),
-        # No PSG photo in the repository. Needs one
-        # uploading.
-        "image": None,
+        "image": "/images/products/football/psg-home.jpg",
+        "is_featured": True,
+        "is_new": True,
+        "is_best_seller": False,
+        "in_stock": True,
+    },
+    {
+        "name": "Chelsea Home Jersey",
+        "sport": "Football",
+        "category": "Jerseys",
+        "team": "Chelsea",
+        "league": "Premier League",
+        "brand": "Nike",
+        "price": Decimal("89.99"),
+        "old_price": None,
+        "rating": Decimal("4.60"),
+        "image": "/images/products/football/chelsea-home.webp",
         "is_featured": True,
         "is_new": True,
         "is_best_seller": False,
@@ -289,6 +294,7 @@ def seed_products(
             )
 
             db.add(product)
+            db.flush()
 
             print(
                 f"Created product: "

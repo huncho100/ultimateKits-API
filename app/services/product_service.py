@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -76,16 +77,29 @@ class ProductService:
     @staticmethod
     def get_products(
         db: Session,
+        *,
+        sport: str | None = None,
+        category: str | None = None,
+        team: str | None = None,
+        league: str | None = None,
     ) -> list[Product]:
         """
-        Retrieve all products.
+        Retrieve the complete catalog or exact metadata matches.
         """
 
-        return (
-            db.query(Product)
-            .order_by(Product.id.desc())
-            .all()
-        )
+        query = db.query(Product)
+        for column, value in (
+            (Product.sport, sport),
+            (Product.category, category),
+            (Product.team, team),
+            (Product.league, league),
+        ):
+            if value is not None:
+                query = query.filter(
+                    func.lower(func.trim(column)) == value.strip().lower()
+                )
+
+        return query.order_by(Product.id.desc()).all()
 
     # ==========================================
     # Update Product

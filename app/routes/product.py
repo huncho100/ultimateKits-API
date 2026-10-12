@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
@@ -54,15 +54,33 @@ def create_product(
 )
 def get_products(
     db: Session = Depends(get_db),
+    sport: str | None = Query(
+        default=None, min_length=1, max_length=100, pattern=r"\S",
+    ),
+    category: str | None = Query(
+        default=None, min_length=1, max_length=100, pattern=r"\S",
+    ),
+    team: str | None = Query(
+        default=None, min_length=1, max_length=150, pattern=r"\S",
+    ),
+    league: str | None = Query(
+        default=None, min_length=1, max_length=150, pattern=r"\S",
+    ),
 ):
     """
-    Retrieve all products.
+    Retrieve all products, optionally matching sport, category,
+    team and league. Filters are case-insensitive exact matches
+    ignoring surrounding spaces, and are combined with AND.
 
     Public endpoint.
     """
 
     return ProductService.get_products(
         db,
+        sport=sport,
+        category=category,
+        team=team,
+        league=league,
     )
 
 
