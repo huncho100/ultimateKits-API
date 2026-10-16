@@ -5,7 +5,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import create_engine, text
 
-from app.database.seed import PRODUCTS
+from app.database.seed import PRODUCTS, PRODUCT_GALLERY_IMAGES
 
 
 def test_seeded_product_image_paths_use_public_product_directory():
@@ -39,7 +39,7 @@ def test_seeded_product_image_paths_use_public_product_directory():
         "/images/products/football/manchester-united-home.webp"
     )
     assert images_by_name["Chelsea Home Jersey"] == (
-        "/images/products/football/chelsea-home.webp"
+        "/images/products/football/chelsea-home-front.webp"
     )
     assert images_by_name["FC Barcelona Retro Jersey"] == (
         "/images/products/retro/barca-retro.jpg"
@@ -59,6 +59,26 @@ def test_seeded_product_image_paths_use_public_product_directory():
     assert images_by_name["Nigeria Retro Jersey — White"] == (
         "/images/products/retro/nigeria-retro-white.jpg"
     )
+
+    frontend_public = (
+        Path(__file__).resolve().parents[2]
+        / "ultimateKits-FE"
+        / "public"
+    )
+    all_seed_paths = [
+        product["image"]
+        for product in PRODUCTS
+        if product["image"]
+    ]
+    all_seed_paths.extend(
+        image_path
+        for paths in PRODUCT_GALLERY_IMAGES.values()
+        for image_path in paths
+    )
+    for image_path in all_seed_paths:
+        assert (frontend_public / image_path.lstrip("/")).is_file(), (
+            image_path
+        )
 
 
 def test_product_image_migration_repairs_and_clears_paths():
@@ -187,3 +207,58 @@ def test_webp_migration_only_corrects_named_products_with_stale_jpg_paths():
         2, rows[1][1], "/images/products/football/chelsea-home.webp", "91.00",
     )
     assert after == expected
+
+
+def test_gallery_migration_corrects_chelsea_path_and_backfills_primary_images():
+    migration_path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "a52c7e9d4b61_add_product_image_gallery.py"
+    )
+    upgrade = runpy.run_path(str(migration_path))["upgrade"]
+    engine = create_engine("sqlite://")
+
+    with engine.begin() as connection:
+        connection.execute(text(
+            "CREATE TABLE products "
+            "(id INTEGER PRIMARY KEY, name VARCHAR(255), image VARCHAR(500))"
+        ))
+        connection.execute(
+            text("INSERT INTO products VALUES (:id, :name, :image)"),
+            [
+                {
+                    "id": 1,
+                    "name": "Chelsea Home Jersey",
+                    "image": "/images/products/football/chelsea-home.webp",
+                },
+                {
+                    "id": 2,
+                    "name": "No image product",
+                    "image": None,
+                },
+            ],
+        )
+
+        with Operations.context(MigrationContext.configure(connection)):
+            upgrade()
+
+        images = connection.execute(text(
+            "SELECT product_id, image_url, sort_order, is_primary "
+            "FROM product_images ORDER BY product_id"
+        )).all()
+        chelsea_path = connection.execute(text(
+            "SELECT image FROM products WHERE id = 1"
+        )).scalar_one()
+
+    assert chelsea_path == (
+        "/images/products/football/chelsea-home-front.webp"
+    )
+    assert images == [
+        (
+            1,
+            "/images/products/football/chelsea-home-front.webp",
+            0,
+            1,
+        )
+    ]

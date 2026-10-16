@@ -25,7 +25,7 @@ VALID_PRODUCT = {
     "price": Decimal("89.99"),
     "old_price": Decimal("109.99"),
     "rating": 4.5,
-    "image": "/images/manchester-united-home.jpg",
+    "image": "/images/products/football/manchester-united-home.webp",
     "is_featured": True,
     "is_new": True,
     "is_best_seller": False,
@@ -130,6 +130,59 @@ def test_product_create_rejects_negative_rating():
         )
 
 
+@pytest.mark.parametrize(
+    "image",
+    [
+        "https://example.com/jersey.jpg",
+        "/images/jersey.jpg",
+        "/images/products/../private.jpg",
+        "/images/products/jersey.jpg?size=large",
+    ],
+)
+def test_product_create_rejects_non_public_image_paths(image):
+    with pytest.raises(ValidationError):
+        ProductCreate(
+            name="Invalid Image",
+            sport="Football",
+            category="Jerseys",
+            price=Decimal("50.00"),
+            image=image,
+        )
+
+
+def test_product_create_accepts_unique_public_gallery_paths():
+    product = ProductCreate(
+        name="Gallery Jersey",
+        sport="Football",
+        category="Jerseys",
+        price=Decimal("50.00"),
+        image="/images/products/football/arsenal-home.jpg",
+        gallery=[
+            "/images/products/football/arsenal-home.jpg",
+            "/images/products/football/liverpool-home.jpg",
+        ],
+    )
+
+    assert product.gallery == [
+        "/images/products/football/arsenal-home.jpg",
+        "/images/products/football/liverpool-home.jpg",
+    ]
+
+
+def test_product_create_rejects_duplicate_gallery_paths():
+    with pytest.raises(ValidationError):
+        ProductCreate(
+            name="Gallery Jersey",
+            sport="Football",
+            category="Jerseys",
+            price=Decimal("50.00"),
+            gallery=[
+                "/images/products/football/arsenal-home.jpg",
+                "/images/products/football/arsenal-home.jpg",
+            ],
+        )
+
+
 def test_product_create_rejects_short_name():
     with pytest.raises(ValidationError):
         ProductCreate(
@@ -209,6 +262,11 @@ def test_product_update_rejects_invalid_rating():
         )
 
 
+def test_product_update_rejects_non_public_gallery_paths():
+    with pytest.raises(ValidationError):
+        ProductUpdate(gallery=["https://example.com/jersey.jpg"])
+
+
 # ==========================================
 # ProductResponse
 # ==========================================
@@ -250,7 +308,7 @@ def test_product_response_from_attributes():
         price = Decimal("99.99")
         old_price = Decimal("119.99")
         rating = 4.8
-        image = "/images/lakers-white.jpg"
+        image = "/images/products/basketball/lakers-white.jpg"
         is_featured = True
         is_new = False
         is_best_seller = True

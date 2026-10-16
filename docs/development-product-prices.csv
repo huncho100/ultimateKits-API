@@ -1,0 +1,52 @@
+catalog_key,product_id,product_name,currency,temporary_ngn_price,current_ngn_price,development_placeholder,price_status,sport,category,league
+manchester-united-home-jersey,1,Manchester United Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+real-madrid-home-jersey,2,Real Madrid Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,La Liga
+arsenal-home-jersey,3,Arsenal Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+fc-barcelona-home-jersey,4,FC Barcelona Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,La Liga
+liverpool-home-jersey,5,Liverpool Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+bayern-munich-home-jersey,6,Bayern Munich Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Bundesliga
+inter-milan-home-jersey,7,Inter Milan Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Serie A
+paris-saint-germain-home-jersey,8,Paris Saint-Germain Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Ligue 1
+chelsea-home-jersey,9,Chelsea Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+fc-barcelona-retro-jersey,10,FC Barcelona Retro Jersey,NGN,,25000.00,false,approved_retro_price,Football,Retro,
+england-retro-jersey,11,England Retro Jersey,NGN,,25000.00,false,approved_retro_price,Football,Retro,National Team
+inter-milan-retro-jersey,12,Inter Milan Retro Jersey,NGN,,25000.00,false,approved_retro_price,Football,Retro,
+liverpool-retro-jersey,13,Liverpool Retro Jersey,NGN,,25000.00,false,approved_retro_price,Football,Retro,
+nigeria-retro-jersey-green-patterned,14,Nigeria Retro Jersey — Green Patterned,NGN,,25000.00,false,approved_retro_price,Football,Retro,National Team
+nigeria-retro-jersey-white,15,Nigeria Retro Jersey — White,NGN,,25000.00,false,approved_retro_price,Football,Retro,National Team
+manchester-city-home-jersey,18,Manchester City Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+manchester-united-red-jersey-black-shoulder-stripes,19,Manchester United Red Jersey - Black Shoulder Stripes,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,Premier League
+argentina-home-jersey-no-10,20,Argentina Home Jersey - No. 10,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+argentina-away-jersey-no-10,21,Argentina Away Jersey - No. 10,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+brazil-home-jersey,22,Brazil Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+brazil-away-jersey,23,Brazil Away Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+brazil-away-jersey-no-7,24,Brazil Away Jersey - No. 7,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+france-home-jersey,25,France Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+france-away-jersey-no-10,26,France Away Jersey - No. 10,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+germany-away-jersey,27,Germany Away Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+germany-home-jersey-no-17,28,Germany Home Jersey - No. 17,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+nigeria-classic-jersey-green-white-no-22,29,Nigeria Classic Jersey - Green/White No. 22,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Retro,National Team
+nigeria-green-jersey,30,Nigeria Green Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+nigeria-dark-green-jersey,31,Nigeria Dark Green Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+nigeria-white-green-flame-jersey,32,Nigeria White/Green Flame Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+nigeria-white-jersey,33,Nigeria White Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+nigeria-white-green-patterned-jersey,34,Nigeria White/Green Patterned Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+norway-home-jersey,35,Norway Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+portugal-home-jersey,36,Portugal Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+portugal-away-jersey,37,Portugal Away Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+spain-home-jersey,38,Spain Home Jersey,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+spain-away-jersey-no-19,39,Spain Away Jersey - No. 19,NGN,25000.00,25000.00,true,development_only_not_production_approved,Football,Jerseys,National Team
+chicago-bulls-red-jersey-no-23,40,Chicago Bulls Red Jersey - No. 23,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+boston-celtics-black-jersey-no-0,41,Boston Celtics Black Jersey - No. 0,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+boston-celtics-green-jersey-no-33,42,Boston Celtics Green Jersey - No. 33,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+cleveland-cavaliers-red-jersey-no-23,43,Cleveland Cavaliers Red Jersey - No. 23,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+dallas-mavericks-white-jersey-no-77,44,Dallas Mavericks White Jersey - No. 77,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+golden-state-warriors-white-jersey-no-30,45,Golden State Warriors White Jersey - No. 30,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+miami-heat-white-jersey-no-22,46,Miami Heat White Jersey - No. 22,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+los-angeles-lakers-white-jersey-no-24,47,Los Angeles Lakers White Jersey - No. 24,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+los-angeles-lakers-yellow-jersey-no-23,48,Los Angeles Lakers Yellow Jersey - No. 23,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+houston-rockets-white-jersey-no-13,49,Houston Rockets White Jersey - No. 13,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+san-antonio-spurs-black-jersey-no-21,50,San Antonio Spurs Black Jersey - No. 21,NGN,20000.00,20000.00,true,development_only_not_production_approved,Basketball,Jerseys,NBA
+new-york-yankees-black-jersey-no-99,51,New York Yankees Black Jersey - No. 99,NGN,22500.00,22500.00,true,development_only_not_production_approved,Baseball,Jerseys,MLB
+new-york-yankees-pinstripe-jersey-no-22,52,New York Yankees Pinstripe Jersey - No. 22,NGN,22500.00,22500.00,true,development_only_not_production_approved,Baseball,Jerseys,MLB
+new-york-grey-baseball-jersey,53,New York Grey Baseball Jersey,NGN,22500.00,22500.00,true,development_only_not_production_approved,Baseball,Jerseys,

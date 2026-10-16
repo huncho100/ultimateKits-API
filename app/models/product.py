@@ -5,18 +5,23 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Integer,
+    Index,
     Numeric,
     String,
     Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm.exc import DetachedInstanceError
 
 from app.database.database import Base
 
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = (
+        Index("uq_products_catalog_key", "catalog_key", unique=True),
+    )
 
     # ==========================================
     # Primary Key
@@ -95,6 +100,18 @@ class Product(Base):
 
     price: Mapped[Decimal] = mapped_column(
         Numeric(10, 2),
+        nullable=False,
+    )
+
+    catalog_key: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    development_placeholder: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
         nullable=False,
     )
 
@@ -198,3 +215,29 @@ class Product(Base):
         "OrderItem",
         back_populates="product",
     )
+
+    product_images = relationship(
+        "ProductImage",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ProductImage.sort_order",
+    )
+
+    @property
+    def gallery(self) -> list[str]:
+        try:
+            images = sorted(
+                self.product_images,
+                key=lambda item: (
+                    not item.is_primary,
+                    item.sort_order,
+                    item.id or 0,
+                ),
+            )
+        except DetachedInstanceError:
+            images = []
+
+        if images:
+            return [image.image_url for image in images]
+
+        return [self.image] if self.image else []

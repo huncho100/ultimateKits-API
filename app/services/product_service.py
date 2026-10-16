@@ -1,9 +1,10 @@
 from decimal import Decimal
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.product import Product
+from app.models.product_image import ProductImage
 from app.schemas.product import ProductCreate, ProductUpdate
 
 
@@ -12,6 +13,29 @@ class ProductService:
     Handles product-related business logic and
     database operations.
     """
+
+    @staticmethod
+    def _replace_gallery(
+        db: Session,
+        product: Product,
+        image_paths: list[str],
+    ) -> None:
+        unique_paths = list(dict.fromkeys(image_paths))
+        if product.id is not None:
+            product.product_images.clear()
+            db.flush()
+        else:
+            product.product_images.clear()
+
+        product.image = unique_paths[0] if unique_paths else None
+        product.product_images = [
+            ProductImage(
+                image_url=image_path,
+                sort_order=index,
+                is_primary=index == 0,
+            )
+            for index, image_path in enumerate(unique_paths)
+        ]
 
     # ==========================================
     # Create Product
@@ -45,6 +69,13 @@ class ProductService:
             stock_quantity=data.stock_quantity,
         )
 
+        image_paths = list(data.gallery)
+        if data.image:
+            image_paths = [data.image] + [
+                path for path in image_paths if path != data.image
+            ]
+        ProductService._replace_gallery(db, product, image_paths)
+
         db.add(product)
         db.commit()
         db.refresh(product)
@@ -66,6 +97,7 @@ class ProductService:
 
         return (
             db.query(Product)
+            .options(selectinload(Product.product_images))
             .filter(Product.id == product_id)
             .first()
         )
@@ -87,7 +119,9 @@ class ProductService:
         Retrieve the complete catalog or exact metadata matches.
         """
 
-        query = db.query(Product)
+        query = db.query(Product).options(
+            selectinload(Product.product_images)
+        )
         for column, value in (
             (Product.sport, sport),
             (Product.category, category),
@@ -119,9 +153,35 @@ class ProductService:
         update_data = data.model_dump(
             exclude_unset=True
         )
+        if "price" in update_data:
+            product.development_placeholder = False
+        gallery_was_supplied = "gallery" in update_data
+        image_was_supplied = "image" in update_data
+        gallery_value = update_data.pop("gallery", None)
+        image_value = update_data.get("image")
 
         for field, value in update_data.items():
             setattr(product, field, value)
+
+        if gallery_was_supplied:
+            paths = list(gallery_value or [])
+            if image_was_supplied and image_value:
+                paths = [image_value] + [
+                    path for path in paths if path != image_value
+                ]
+            ProductService._replace_gallery(db, product, paths)
+        elif image_was_supplied:
+            if image_value is None:
+                ProductService._replace_gallery(db, product, [])
+            else:
+                existing_paths = list(product.gallery)
+                paths = [image_value]
+                paths.extend(
+                    path
+                    for path in existing_paths
+                    if path != image_value
+                )
+                ProductService._replace_gallery(db, product, paths)
 
         db.commit()
         db.refresh(product)

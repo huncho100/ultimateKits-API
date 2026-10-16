@@ -1,7 +1,44 @@
 from datetime import datetime
 from decimal import Decimal
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _validate_product_image_path(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    parsed = urlsplit(value)
+    if (
+        not value.startswith("/images/products/")
+        or parsed.netloc
+        or parsed.query
+        or parsed.fragment
+        or ".." in parsed.path.split("/")
+    ):
+        raise ValueError(
+            "Product images must use a root-relative "
+            "/images/products/ path."
+        )
+
+    return value
+
+
+def _validate_gallery_paths(
+    value: list[str] | None,
+) -> list[str] | None:
+    if value is None:
+        return None
+
+    validated = [
+        _validate_product_image_path(path)
+        for path in value
+    ]
+    if len(validated) != len(set(validated)):
+        raise ValueError("Product gallery paths must be unique.")
+
+    return validated
 
 
 # ==========================================
@@ -77,6 +114,10 @@ class ProductCreate(BaseModel):
         max_length=500,
     )
 
+    gallery: list[str] = Field(
+        default_factory=list,
+    )
+
     is_featured: bool = False
 
     is_new: bool = False
@@ -92,6 +133,16 @@ class ProductCreate(BaseModel):
         default=None,
         ge=0,
     )
+
+    @field_validator("image")
+    @classmethod
+    def validate_image(cls, value: str | None) -> str | None:
+        return _validate_product_image_path(value)
+
+    @field_validator("gallery")
+    @classmethod
+    def validate_gallery(cls, value: list[str]) -> list[str]:
+        return _validate_gallery_paths(value) or []
 
 
 # ==========================================
@@ -170,6 +221,8 @@ class ProductUpdate(BaseModel):
         max_length=500,
     )
 
+    gallery: list[str] | None = None
+
     is_featured: bool | None = None
 
     is_new: bool | None = None
@@ -182,6 +235,26 @@ class ProductUpdate(BaseModel):
         default=None,
         ge=0,
     )
+
+    @field_validator("price")
+    @classmethod
+    def validate_price(cls, value: Decimal | None) -> Decimal:
+        if value is None:
+            raise ValueError("A product price cannot be null.")
+        return value
+
+    @field_validator("image")
+    @classmethod
+    def validate_image(cls, value: str | None) -> str | None:
+        return _validate_product_image_path(value)
+
+    @field_validator("gallery")
+    @classmethod
+    def validate_gallery(
+        cls,
+        value: list[str] | None,
+    ) -> list[str] | None:
+        return _validate_gallery_paths(value)
 
 
 # ==========================================
@@ -215,12 +288,15 @@ class ProductResponse(BaseModel):
     description: str | None = None
 
     price: Decimal
+    development_placeholder: bool = False
 
     old_price: Decimal | None
 
     rating: float
 
     image: str | None
+
+    gallery: list[str] = Field(default_factory=list)
 
     is_featured: bool
 

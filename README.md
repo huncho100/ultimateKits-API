@@ -54,25 +54,34 @@ Examples:
 with `sport=National%20Teams` or `sport=Retro` only matches records whose
 stored sport literally has that value; it does not select a collection.
 
-The sample seed contains nine current football club jerseys, including
-Chelsea, and six operator-approved Retro products. England and both Nigeria
-Retro products use `league=National Team`, so each is returned by both the
-National Teams and Retro collection filters without a duplicate record.
-The Nigeria Retro white shirt uses
-`/images/products/retro/nigeria-retro-white.jpg`. Image files in
-`ultimateKits-FE/public/images/products/` are not product records and do not
-populate the catalog. New seed entries require approved names, prices,
-metadata, and matching root-relative image paths; filenames alone cannot
-establish sellable product details.
+The operator has authorized development-only NGN prices for reviewed distinct
+designs. The complete development catalog contains 51 products across Football,
+National Teams, Retro, Basketball and Baseball. National Team Retro shirts use
+one `Football`/`National Team`/`Retro` record and appear on both collections.
+Images alone do not create products: explicit reviewed seed identities do.
+See [development catalog instructions](docs/development-catalog.md) for all
+classification decisions, temporary prices, safeguards and launch procedure.
 
-`seed_products` skips existing products by name without updating them.
-Use the existing seed workflow only after the additional catalog entries
-are operator-approved. Do not change `DATABASE_URL` merely because a
-collection is empty; first confirm the intended database with the operator.
+Product image files remain in `ultimateKits-FE/public/images/products/`;
+product and gallery URLs stored in the database are root-relative paths under
+`/images/products/`. The `product_images` table stores one primary image and
+optional ordered alternates per product. `products.image` remains the
+backward-compatible primary-image field. The gallery migration backfills
+existing primaries and corrects the former Chelsea path.
 
-Chelsea and Manchester United use their `.webp` primary photos. Apply
-Alembic migrations to correct their former `.jpg` references in existing
-databases. Run `seed_products` through the existing database session to
-add approved missing products without also running user seeding. Alternate
-photos in the image directory are not separate products: the current
-catalog stores one primary image per product.
+After confirming the configured local database, apply `python -m alembic upgrade
+head`, then run `python scripts/reconcile_product_images.py --apply
+--development-catalog`. This inserts missing reviewed products and gallery links
+without user seeding, and writes the image inventory and
+[development price register](docs/development-product-prices.csv). `--apply`
+without `--development-catalog` retains the smaller original seed scope.
+Running without `--apply` only refreshes reports.
+
+All product seeds require the intended local `ultimatekits` development database
+and `DEBUG=True` (or isolated in-memory SQLite tests). Existing claimed product
+prices, IDs, stock and metadata are not overwritten. Administrator price PATCH
+requests clear the placeholder marker, including approval at the same amount.
+Never use the price register as production input or run development seeds in
+production. Before release, replace/approve all prices via the existing admin API
+and require `python scripts/reconcile_product_images.py --check-production-prices`
+to succeed. Deployment is not ready while that preflight reports placeholders.

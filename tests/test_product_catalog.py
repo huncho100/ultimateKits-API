@@ -4,6 +4,7 @@ import pytest
 
 from app.database.seed import PRODUCTS, seed_products
 from app.models.product import Product
+from app.models.product_image import ProductImage
 
 
 @pytest.fixture
@@ -226,7 +227,9 @@ def test_seed_adds_missing_chelsea_once_without_overwriting_existing(db):
     chelsea = db.query(Product).filter(
         Product.name == "Chelsea Home Jersey"
     ).one()
-    assert chelsea.image == "/images/products/football/chelsea-home.webp"
+    assert chelsea.image == (
+        "/images/products/football/chelsea-home-front.webp"
+    )
     assert chelsea.price == next(
         product["price"] for product in PRODUCTS
         if product["name"] == "Chelsea Home Jersey"
@@ -256,3 +259,27 @@ def test_repeated_seed_adds_each_approved_retro_product_once(db):
     assert len(seeded) == 6
     assert db.query(Product).count() == before_count
     assert {product.name for product in seeded} == approved_names
+
+
+def test_seed_adds_primary_and_known_alternate_images_idempotently(db):
+    from app.database.seed import seed_product_images
+
+    first_count = seed_product_images(db)
+    db.commit()
+    before_count = db.query(ProductImage).count()
+
+    second_count = seed_product_images(db)
+    db.commit()
+
+    assert first_count == 0
+    assert second_count == 0
+    assert before_count == 23
+    assert db.query(ProductImage).count() == before_count
+    liverpool = db.query(Product).filter(
+        Product.name == "Liverpool Home Jersey"
+    ).one()
+    assert liverpool.gallery == [
+        liverpool.image,
+        "/images/products/football/liverpool-home-close-up.jpg",
+        "/images/products/football/liverpool-home-close-up2.jpg",
+    ]

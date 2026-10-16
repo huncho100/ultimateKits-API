@@ -22,7 +22,11 @@ PRODUCT_DATA = {
     "price": "89.99",
     "old_price": "109.99",
     "rating": 4.5,
-    "image": "/images/manchester-united-home.jpg",
+    "image": "/images/products/football/manchester-united-home.webp",
+    "gallery": [
+        "/images/products/football/manchester-united-home.webp",
+        "/images/products/football/manchester-united-home-close-up.webp",
+    ],
     "is_featured": True,
     "is_new": True,
     "is_best_seller": False,
@@ -181,6 +185,7 @@ def test_create_product(
     assert data["is_new"] is True
     assert data["is_best_seller"] is False
     assert data["in_stock"] is True
+    assert data["gallery"] == PRODUCT_DATA["gallery"]
 
     print(
         "✓ Admin create product route test passed"

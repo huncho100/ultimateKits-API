@@ -25,11 +25,15 @@ def create_product_data(
         price=Decimal("89.99"),
         old_price=Decimal("109.99"),
         rating=4.5,
-        image="/images/manchester-united-home.jpg",
+        image="/images/products/football/manchester-united-home.webp",
         is_featured=True,
         is_new=True,
         is_best_seller=False,
         in_stock=True,
+        gallery=[
+            "/images/products/football/manchester-united-home.webp",
+            "/images/products/football/manchester-united-home-close-up.webp",
+        ],
     )
 
 
@@ -54,6 +58,10 @@ def test_create_product(db):
     assert product.is_featured is True
     assert product.is_new is True
     assert product.in_stock is True
+    assert product.gallery == [
+        "/images/products/football/manchester-united-home.webp",
+        "/images/products/football/manchester-united-home-close-up.webp",
+    ]
 
     print("✓ Create product test passed")
 
@@ -154,6 +162,44 @@ def test_update_product(db):
     assert updated_product.in_stock is False
 
     print("✓ Update product test passed")
+
+
+def test_update_product_gallery_replaces_entries_and_primary(db):
+    product = ProductService.create_product(
+        db,
+        create_product_data(),
+    )
+    new_primary = "/images/products/football/arsenal-home.jpg"
+    new_alternate = "/images/products/football/liverpool-home.jpg"
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(gallery=[new_primary, new_alternate]),
+    )
+
+    assert updated.image == new_primary
+    assert updated.gallery == [new_primary, new_alternate]
+
+
+def test_update_product_primary_preserves_alternate_images(db):
+    product = ProductService.create_product(
+        db,
+        create_product_data(),
+    )
+    new_primary = "/images/products/football/arsenal-home.jpg"
+
+    updated = ProductService.update_product(
+        db,
+        product,
+        ProductUpdate(image=new_primary),
+    )
+
+    assert updated.gallery == [
+        new_primary,
+        "/images/products/football/manchester-united-home.webp",
+        "/images/products/football/manchester-united-home-close-up.webp",
+    ]
 
 
 # ==========================================
