@@ -3,6 +3,7 @@ from decimal import Decimal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+<<<<<<< HEAD
 
 
 def _validate_product_image_path(value: str | None) -> str | None:
@@ -39,13 +40,39 @@ def _validate_gallery_paths(
         raise ValueError("Product gallery paths must be unique.")
 
     return validated
+=======
+import re
+
+
+class ProductInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name", "sport", "category", check_fields=False)
+    @classmethod
+    def meaningful_text(cls, value: str | None):
+        if value is not None:
+            value = value.strip()
+            if len(value) < 2:
+                raise ValueError("Must contain at least two non-whitespace characters.")
+        return value
+
+    @field_validator("image", check_fields=False)
+    @classmethod
+    def local_image_path(cls, value: str | None):
+        if value is not None and (
+            not re.fullmatch(r"/images/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\.(?:jpg|jpeg|png|webp|avif|gif)", value, re.I)
+            or ".." in value
+        ):
+            raise ValueError("Use a root-relative /images/ photograph URL without traversal or query parameters.")
+        return value
+>>>>>>> feature/product-descriptions
 
 
 # ==========================================
 # Product Create
 # ==========================================
 
-class ProductCreate(BaseModel):
+class ProductCreate(ProductInput):
     """
     Schema used when creating a new product.
     """
@@ -132,6 +159,8 @@ class ProductCreate(BaseModel):
     stock_quantity: int | None = Field(
         default=None,
         ge=0,
+        le=2147483647,
+        strict=True,
     )
 
     @field_validator("image")
@@ -149,7 +178,7 @@ class ProductCreate(BaseModel):
 # Product Update
 # ==========================================
 
-class ProductUpdate(BaseModel):
+class ProductUpdate(ProductInput):
     """
     Schema used when updating an existing product.
 
@@ -234,6 +263,8 @@ class ProductUpdate(BaseModel):
     stock_quantity: int | None = Field(
         default=None,
         ge=0,
+        le=2147483647,
+        strict=True,
     )
 
     @field_validator("price")

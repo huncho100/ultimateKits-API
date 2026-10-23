@@ -1,4 +1,5 @@
 from decimal import Decimal
+from fastapi import HTTPException
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
@@ -160,6 +161,17 @@ class ProductService:
         gallery_value = update_data.pop("gallery", None)
         image_value = update_data.get("image")
 
+        non_nullable = {
+            "name", "sport", "category", "price", "rating",
+            "is_featured", "is_new", "is_best_seller", "in_stock",
+        }
+        if any(update_data.get(key) is None for key in non_nullable & update_data.keys()):
+            raise HTTPException(422, "Required product fields cannot be null.")
+
+        product = (
+            db.query(Product).filter(Product.id == product.id)
+            .populate_existing().with_for_update().one()
+        )
         for field, value in update_data.items():
             setattr(product, field, value)
 

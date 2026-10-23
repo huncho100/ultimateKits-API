@@ -99,6 +99,11 @@ class AdminOrderService:
 
         normalized_status = status.strip().lower()
 
+        order = (
+            db.query(Order).filter(Order.id == order.id)
+            .populate_existing().with_for_update().one()
+        )
+
         if normalized_status not in ORDER_STATUSES:
             raise ValueError(
                 f"Invalid order status: {status}"
