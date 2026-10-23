@@ -10,7 +10,9 @@ from app.schemas.admin_order import (
     AdminOrderStatusUpdate,
 )
 from app.schemas.order import OrderResponse
+from app.schemas.admin import AdminOrderDetail
 from app.services.admin_order_service import AdminOrderService
+from app.services.admin_service import order_detail
 
 
 # ==========================================
@@ -50,7 +52,7 @@ def get_all_orders(
 
 @router.get(
     "/{order_id}",
-    response_model=OrderResponse,
+    response_model=AdminOrderDetail,
 )
 def get_order(
     order_id: int,
@@ -74,7 +76,7 @@ def get_order(
             detail="Order not found.",
         )
 
-    return order
+    return order_detail(order)
 
 
 # ==========================================

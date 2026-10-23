@@ -12,6 +12,8 @@ class AdminOrderStatusUpdate(BaseModel):
     update an order's status.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     status: str = Field(
         ...,
         min_length=1,
