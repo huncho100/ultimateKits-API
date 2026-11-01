@@ -108,8 +108,16 @@ Confirmed primary repairs (paths relative to `/images/products/football/`):
 
 | Existing product | Stale path | Correct existing photograph |
 | --- | --- | --- |
-| Chelsea Home Jersey | `chelsea-home-front.webp` | `chelsea-home.webp` |
-| Manchester United Red Jersey - Black Shoulder Stripes | `manchester-united-home11.jpg` | `manchester-united-home22.jpg` |
+| Chelsea Home Jersey | `chelsea-home.webp` | `chelsea-home-front.webp` |
+| Manchester United Red Jersey - Black Shoulder Stripes | `manchester-united-home22.jpg` | `manchester-united-home11.jpg` |
+
+The merged frontend renamed several club photographs. Every repair target is
+byte-identical (same Git blob) to the photograph its stale path used to name:
+`chelsea-home2.webp` is now `chelsea-home-detail.webp`,
+`manchester-united-home-closeup2.webp` is now
+`manchester-united-home-front.webp`, and `manchester-united-home3.webp` is now
+`manchester-united-home.webp` (the primary, so that gallery alias is removed as
+redundant).
 
 The black-stripe product is **not** the white-stripe Manchester United Home
 Jersey, whose `manchester-united-home.webp` primary remains unchanged.
@@ -123,8 +131,8 @@ The reconciliation script and CSV are absent on this branch. Historical
 match the current files. In particular, their Chelsea/United `original_path`
 associations cannot safely be inverted: some currently contain photographs
 of the other club. The repair uses the actual photographs, not those aliases.
-It also repairs stale Chelsea detail and United close-up/model/front gallery
-URLs using existing photographs of the corresponding shirt, retaining updated
+It also repairs stale Chelsea detail and United gallery URLs using the
+identical photographs listed above, retaining updated
 gallery row IDs and ordering. No products or gallery rows are created; only
 redundant broken alternates may be deleted. Conflicting primary gallery rows
 abort the transaction rather than silently changing the primary or ordering.

@@ -1,26 +1,54 @@
+
 from datetime import datetime
 from decimal import Decimal
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-<<<<<<< HEAD
 
+
+# ==========================================
+# Shared Product Validation
+# ==========================================
 
 def _validate_product_image_path(value: str | None) -> str | None:
+    """
+    Accept only local product image paths.
+
+    Images must:
+    - Use /images/products/
+    - Have an approved image extension
+    - Not contain query parameters or fragments
+    - Not contain directory traversal sequences
+    - Not reference external hosts
+    """
     if value is None:
         return None
 
     parsed = urlsplit(value)
+    decoded_path = unquote(parsed.path)
+
+    allowed_extensions = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".avif",
+        ".gif",
+    }
+
     if (
         not value.startswith("/images/products/")
         or parsed.netloc
         or parsed.query
         or parsed.fragment
-        or ".." in parsed.path.split("/")
+        or "\\" in decoded_path
+        or any(part == ".." for part in decoded_path.split("/"))
+        or parsed.path.lower().rsplit(".", 1)[-1]
+        not in {ext.lstrip(".") for ext in allowed_extensions}
     ):
         raise ValueError(
-            "Product images must use a root-relative "
-            "/images/products/ path."
+            "Product images must use a valid root-relative "
+            "/images/products/ path with an approved image extension."
         )
 
     return value
@@ -36,36 +64,49 @@ def _validate_gallery_paths(
         _validate_product_image_path(path)
         for path in value
     ]
+
     if len(validated) != len(set(validated)):
         raise ValueError("Product gallery paths must be unique.")
 
     return validated
-=======
-import re
 
 
 class ProductInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("name", "sport", "category", check_fields=False)
+    @field_validator(
+        "name",
+        "sport",
+        "category",
+        check_fields=False,
+    )
     @classmethod
-    def meaningful_text(cls, value: str | None):
+    def meaningful_text(cls, value: str | None) -> str | None:
         if value is not None:
             value = value.strip()
+
             if len(value) < 2:
-                raise ValueError("Must contain at least two non-whitespace characters.")
+                raise ValueError(
+                    "Must contain at least two non-whitespace characters."
+                )
+
         return value
 
     @field_validator("image", check_fields=False)
     @classmethod
-    def local_image_path(cls, value: str | None):
-        if value is not None and (
-            not re.fullmatch(r"/images/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\.(?:jpg|jpeg|png|webp|avif|gif)", value, re.I)
-            or ".." in value
-        ):
-            raise ValueError("Use a root-relative /images/ photograph URL without traversal or query parameters.")
-        return value
->>>>>>> feature/product-descriptions
+    def validate_image_path(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        return _validate_product_image_path(value)
+
+    @field_validator("gallery", check_fields=False)
+    @classmethod
+    def validate_gallery_paths(
+        cls,
+        value: list[str] | None,
+    ) -> list[str] | None:
+        return _validate_gallery_paths(value)
 
 
 # ==========================================
@@ -110,8 +151,6 @@ class ProductCreate(ProductInput):
         max_length=100,
     )
 
-    # Omit to publish no description. The product page
-    # says so plainly rather than showing invented copy.
     description: str | None = Field(
         default=None,
     )
@@ -153,25 +192,12 @@ class ProductCreate(ProductInput):
 
     in_stock: bool = True
 
-    # Leave unset to keep the product uncounted, where
-    # in_stock alone decides availability. Give it a number
-    # to have that number enforced.
     stock_quantity: int | None = Field(
         default=None,
         ge=0,
         le=2147483647,
         strict=True,
     )
-
-    @field_validator("image")
-    @classmethod
-    def validate_image(cls, value: str | None) -> str | None:
-        return _validate_product_image_path(value)
-
-    @field_validator("gallery")
-    @classmethod
-    def validate_gallery(cls, value: list[str]) -> list[str]:
-        return _validate_gallery_paths(value) or []
 
 
 # ==========================================
@@ -219,8 +245,6 @@ class ProductUpdate(ProductInput):
         max_length=100,
     )
 
-    # Send null to withdraw a published description and
-    # return the product to the empty state.
     description: str | None = Field(
         default=None,
     )
@@ -272,20 +296,8 @@ class ProductUpdate(ProductInput):
     def validate_price(cls, value: Decimal | None) -> Decimal:
         if value is None:
             raise ValueError("A product price cannot be null.")
+
         return value
-
-    @field_validator("image")
-    @classmethod
-    def validate_image(cls, value: str | None) -> str | None:
-        return _validate_product_image_path(value)
-
-    @field_validator("gallery")
-    @classmethod
-    def validate_gallery(
-        cls,
-        value: list[str] | None,
-    ) -> list[str] | None:
-        return _validate_gallery_paths(value)
 
 
 # ==========================================
@@ -312,13 +324,10 @@ class ProductResponse(BaseModel):
 
     brand: str | None
 
-    # Defaulted rather than merely nullable, for the same
-    # reason as stock_quantity below: a product with no
-    # published description leaves this out entirely, so
-    # omitting it must not be a validation error.
     description: str | None = None
 
     price: Decimal
+
     development_placeholder: bool = False
 
     old_price: Decimal | None
@@ -337,9 +346,6 @@ class ProductResponse(BaseModel):
 
     in_stock: bool
 
-    # Defaulted rather than merely nullable: an uncounted
-    # product is represented by leaving this out entirely,
-    # so omitting it must not be a validation error.
     stock_quantity: int | None = None
 
     created_at: datetime

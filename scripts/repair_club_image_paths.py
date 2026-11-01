@@ -16,28 +16,25 @@ FRONTEND_PUBLIC = (
 PREFIX = "/images/products/football/"
 
 # Match both identity and stale URL; never replace a valid custom image.
+# Each correct file is byte-identical (same Git blob) to the photograph the
+# stale path used to name, so no photograph is substituted by guesswork.
 IMAGE_REPAIRS = (
-    ("Chelsea Home Jersey", "chelsea-home-front.webp", "chelsea-home.webp"),
+    ("Chelsea Home Jersey", "chelsea-home.webp", "chelsea-home-front.webp"),
     (
         "Manchester United Red Jersey - Black Shoulder Stripes",
-        "manchester-united-home11.jpg",
         "manchester-united-home22.jpg",
+        "manchester-united-home11.jpg",
     ),
-    ("Chelsea Home Jersey", "chelsea-home-detail.webp", "chelsea-home2.webp"),
+    ("Chelsea Home Jersey", "chelsea-home2.webp", "chelsea-home-detail.webp"),
     (
         "Manchester United Home Jersey",
-        "manchester-united-home-close-up.webp",
         "manchester-united-home-closeup2.webp",
-    ),
-    (
-        "Manchester United Home Jersey",
-        "manchester-united-home-model.webp",
-        "manchester-united-home3.webp",
-    ),
-    (
-        "Manchester United Home Jersey",
         "manchester-united-home-front.webp",
-        "manchester-united-home-33.jpg",
+    ),
+    (
+        "Manchester United Home Jersey",
+        "manchester-united-home3.webp",
+        "manchester-united-home.webp",
     ),
 )
 

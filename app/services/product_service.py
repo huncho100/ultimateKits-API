@@ -154,8 +154,6 @@ class ProductService:
         update_data = data.model_dump(
             exclude_unset=True
         )
-        if "price" in update_data:
-            product.development_placeholder = False
         gallery_was_supplied = "gallery" in update_data
         image_was_supplied = "image" in update_data
         gallery_value = update_data.pop("gallery", None)
@@ -174,6 +172,9 @@ class ProductService:
         )
         for field, value in update_data.items():
             setattr(product, field, value)
+        # Set after the populate_existing reload above, which would discard it.
+        if "price" in update_data:
+            product.development_placeholder = False
 
         if gallery_was_supplied:
             paths = list(gallery_value or [])
